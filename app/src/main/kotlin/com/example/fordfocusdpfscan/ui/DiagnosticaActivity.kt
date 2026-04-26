@@ -9,7 +9,11 @@ import androidx.lifecycle.lifecycleScope
 import com.example.fordfocusdpfscan.R
 import com.example.fordfocusdpfscan.data.DpfData
 import com.example.fordfocusdpfscan.data.DpfRepository
-import com.facebook.shimmer.ShimmerFrameLayout
+import com.github.mikephil.charting.charts.LineChart
+import com.github.mikephil.charting.components.YAxis
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -89,8 +93,11 @@ class DiagnosticaActivity : AppCompatActivity() {
     // ── Connection banner ─────────────────────────────────────────────────────
     private lateinit var notConnectedBanner: View
 
-    // ── Shimmer ───────────────────────────────────────────────────────────────
-    private lateinit var shimmer: ShimmerFrameLayout
+    // ── Live chart ────────────────────────────────────────────────────────────
+    private lateinit var liveChart: LineChart
+    private val egtBuffer  = ArrayDeque<Float>()   // EGT °C — last 40 readings
+    private val loadBuffer = ArrayDeque<Float>()   // Engine load % — last 40 readings
+    private val BUFFER_MAX = 40
 
     // ── Colors ────────────────────────────────────────────────────────────────
     private val colorPrimary by lazy  { getColor(R.color.text_primary)  }
@@ -108,9 +115,10 @@ class DiagnosticaActivity : AppCompatActivity() {
         setContentView(R.layout.activity_diagnostica)
 
         notConnectedBanner = findViewById(R.id.tvNotConnectedBanner)
-        shimmer            = findViewById(R.id.shimmerDiagnostica)
+        liveChart          = findViewById(R.id.chartLiveSensors)
         bindCells()
         setupLabels()
+        setupLiveChart()
         setupTabBar()
         observeData()
     }
@@ -172,21 +180,103 @@ class DiagnosticaActivity : AppCompatActivity() {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
+    // Live chart
+    // ═════════════════════════════════════════════════════════════════════════
+
+    private fun setupLiveChart() {
+        liveChart.apply {
+            description.isEnabled  = false
+            legend.isEnabled       = false   // custom legend in XML
+            setTouchEnabled(false)
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            setNoDataText("In attesa dati OBD2…")
+            setNoDataTextColor(0xFF7A8FA6.toInt())
+
+            // X axis — just a time index, no labels
+            xAxis.isEnabled = false
+
+            // Left Y axis — EGT °C  (0–800)
+            axisLeft.apply {
+                textColor    = 0xFF7A8FA6.toInt()
+                textSize     = 9f
+                axisMinimum  = 0f
+                axisMaximum  = 800f
+                setDrawGridLines(true)
+                gridColor    = 0xFF1A1A2A.toInt()
+                gridLineWidth = 0.5f
+                setLabelCount(5, true)
+            }
+
+            // Right Y axis — Load %  (0–100)
+            axisRight.apply {
+                isEnabled    = true
+                textColor    = 0xFF7A8FA6.toInt()
+                textSize     = 9f
+                axisMinimum  = 0f
+                axisMaximum  = 100f
+                setDrawGridLines(false)
+                setLabelCount(5, true)
+            }
+        }
+    }
+
+    private fun updateLiveChart(data: DpfData) {
+        // Append new readings to rolling buffers
+        if (data.egtCelsius >= 0f) {
+            if (egtBuffer.size >= BUFFER_MAX) egtBuffer.removeFirst()
+            egtBuffer.addLast(data.egtCelsius)
+        }
+        if (data.engineLoadPct >= 0f) {
+            if (loadBuffer.size >= BUFFER_MAX) loadBuffer.removeFirst()
+            loadBuffer.addLast(data.engineLoadPct)
+        }
+
+        if (egtBuffer.isEmpty()) return
+
+        // EGT line — left Y axis, orange
+        val egtSet = LineDataSet(
+            egtBuffer.mapIndexed { i, v -> Entry(i.toFloat(), v) }, "EGT"
+        ).apply {
+            axisDependency = YAxis.AxisDependency.LEFT
+            color          = 0xFFFF9500.toInt()
+            lineWidth      = 2f
+            setDrawCircles(false)
+            setDrawValues(false)
+            mode           = LineDataSet.Mode.CUBIC_BEZIER
+            fillAlpha      = 40
+            fillColor      = 0xFFFF9500.toInt()
+            setDrawFilled(true)
+        }
+
+        // Engine load line — right Y axis, blue
+        val loadSet = LineDataSet(
+            loadBuffer.mapIndexed { i, v -> Entry(i.toFloat(), v) }, "Load"
+        ).apply {
+            axisDependency = YAxis.AxisDependency.RIGHT
+            color          = 0xFF4499DD.toInt()
+            lineWidth      = 1.5f
+            setDrawCircles(false)
+            setDrawValues(false)
+            mode           = LineDataSet.Mode.CUBIC_BEZIER
+        }
+
+        liveChart.data = LineData(egtSet, loadSet)
+        liveChart.notifyDataSetChanged()
+        liveChart.invalidate()
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
     // Data observation
     // ═════════════════════════════════════════════════════════════════════════
 
     private fun observeData() {
         lifecycleScope.launch {
             DpfRepository.dpfData.collectLatest { data ->
-                // Show/hide "not connected" banner + shimmer
-                if (data.bleConnected) {
-                    notConnectedBanner.visibility = View.GONE
-                    shimmer.stopShimmer()
-                } else {
-                    notConnectedBanner.visibility = View.VISIBLE
-                    shimmer.startShimmer()
-                }
+                // Show/hide "not connected" banner
+                notConnectedBanner.visibility =
+                    if (data.bleConnected) View.GONE else View.VISIBLE
 
+                updateLiveChart(data)
                 updateDpfSection(data)
                 updateEngineSection(data)
                 updateDistanceSection(data)

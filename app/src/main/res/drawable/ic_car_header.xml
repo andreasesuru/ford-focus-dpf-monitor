@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Ford Focus Mk3 — simplified front-view icon for use at small sizes (40–48dp).
+    White silhouette on transparent background — works on both black and dark surfaces.
+    All elements kept inside a 24×24 viewport for crisp rendering at any density.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Car body — white trapezoid (wider at bottom) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 8,6 L 16,6 L 19,10 L 20,13 L 19,18 L 5,18 L 4,13 L 5,10 Z"/>
+
+    <!-- Windshield — Ford Blue -->
+    <path
+        android:fillColor="#003478"
+        android:pathData="M 9,7 L 15,7 L 16,11 L 8,11 Z"/>
+
+    <!-- Left headlight — Ford Blue -->
+    <path
+        android:fillColor="#003478"
+        android:pathData="M 5,11 L 8,10 L 8,14 L 5.5,14.5 L 4.5,13 L 4.5,11.5 Z"/>
+
+    <!-- Right headlight — Ford Blue -->
+    <path
+        android:fillColor="#003478"
+        android:pathData="M 19,11 L 16,10 L 16,14 L 18.5,14.5 L 19.5,13 L 19.5,11.5 Z"/>
+
+    <!-- Grille — Ford Blue -->
+    <path
+        android:fillColor="#003478"
+        android:pathData="M 8,14 L 16,14 L 17,18 L 7,18 Z"/>
+
+    <!-- Ford oval badge — white ring -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 10,16 A 2,1.1 0 1,0 14,16 A 2,1.1 0 1,0 10,16 Z"/>
+
+    <!-- Ford oval badge — blue fill -->
+    <path
+        android:fillColor="#003478"
+        android:pathData="M 10.7,16 A 1.3,0.65 0 1,0 13.3,16 A 1.3,0.65 0 1,0 10.7,16 Z"/>
+
+    <!-- Left DRL strip -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="0.7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M 5.8,12.5 L 7.8,12"/>
+
+    <!-- Right DRL strip -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="0.7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M 18.2,12.5 L 16.2,12"/>
+
+</vector>

@@ -4,5 +4,5 @@
     Solid dark automotive blue — professional, clean.
 -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#1A237E" />
+    <solid android:color="#003478" />
 </shape>

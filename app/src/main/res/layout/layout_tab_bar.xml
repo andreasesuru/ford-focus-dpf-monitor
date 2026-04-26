@@ -4,6 +4,7 @@
     activity_history layouts. Active tab is highlighted by the host activity.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -19,10 +20,12 @@
         android:paddingTop="20dp"
         android:paddingBottom="10dp">
 
-        <ImageView
+        <com.google.android.material.imageview.ShapeableImageView
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@mipmap/ic_launcher"
+            android:src="@drawable/ic_ford_focus"
+            android:scaleType="centerCrop"
+            app:shapeAppearanceOverlay="@style/ShapeCircle"
             android:contentDescription="DPF Monitor icon"/>
 
         <LinearLayout
@@ -47,16 +50,7 @@
                 android:textSize="11sp"/>
         </LinearLayout>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="v2.2"
-            android:textColor="#4F8EF7"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:paddingHorizontal="8dp"
-            android:paddingVertical="3dp"
-            android:background="@drawable/bg_version_badge"/>
+        <!-- version badge removed — version shown in footer only -->
     </LinearLayout>
 
     <!-- Tab strip -->

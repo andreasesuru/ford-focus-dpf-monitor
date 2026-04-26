@@ -87,11 +87,9 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Show build version in header (reads from BuildConfig — always in sync with build.gradle)
-        binding.tvAppVersion.text = "v${com.example.fordfocusdpfscan.BuildConfig.VERSION_NAME}"
-
         setupClickListeners()
         setupGauges()
+        setupFooter()
         observeDpfData()
         observeConnectionState()
     }
@@ -185,7 +183,28 @@ class MainActivity : AppCompatActivity() {
     // UI setup
     // ═════════════════════════════════════════════════════════════════════════
 
+    private fun setupFooter() {
+        // Version — always in sync with build.gradle versionName
+        binding.tvFooterVersion.text = "v${com.example.fordfocusdpfscan.BuildConfig.VERSION_NAME}"
+
+        // GitHub link — opens in browser on tap
+        binding.tvFooterGithub.setOnClickListener {
+            val intent = android.content.Intent(
+                android.content.Intent.ACTION_VIEW,
+                android.net.Uri.parse("https://github.com/andreasesuru")
+            )
+            startActivity(intent)
+        }
+    }
+
     private fun setupClickListeners() {
+        // ── Accordion header toggle ───────────────────────────────────────────
+        binding.layoutConnectionHeader.setOnClickListener {
+            val isExpanded = binding.layoutConnectionButtons.visibility == View.VISIBLE
+            binding.layoutConnectionButtons.visibility = if (isExpanded) View.GONE else View.VISIBLE
+            binding.tvConnectionChevron.text = if (isExpanded) "▸" else "▾"
+        }
+
         // ── Scan & Connect button ─────────────────────────────────────────────
         binding.btnScan.setOnClickListener {
             if (hasRequiredPermissions()) {
@@ -359,15 +378,21 @@ class MainActivity : AppCompatActivity() {
         if (connected) {
             binding.tvConnectionStatus.text = getString(R.string.status_connected)
             binding.tvConnectionStatus.setTextColor(getColor(R.color.status_ok))
-            binding.btnScan.visibility    = View.GONE
+            binding.btnScan.visibility       = View.GONE
             binding.btnDisconnect.visibility = View.VISIBLE
-            binding.btnScanEcu.visibility = View.VISIBLE   // show ECU scanner button
+            binding.btnScanEcu.visibility    = View.VISIBLE
+            // Auto-collapse accordion: connected = rare to need these buttons
+            binding.layoutConnectionButtons.visibility = View.GONE
+            binding.tvConnectionChevron.text = "▸"
         } else {
             binding.tvConnectionStatus.text = getString(R.string.status_disconnected)
             binding.tvConnectionStatus.setTextColor(getColor(R.color.status_neutral))
-            binding.btnScan.visibility    = View.VISIBLE
+            binding.btnScan.visibility       = View.VISIBLE
             binding.btnDisconnect.visibility = View.GONE
-            binding.btnScanEcu.visibility = View.GONE      // hide when not connected
+            binding.btnScanEcu.visibility    = View.GONE
+            // Auto-expand accordion: disconnected = user needs to tap Scan
+            binding.layoutConnectionButtons.visibility = View.VISIBLE
+            binding.tvConnectionChevron.text = "▾"
         }
     }
 

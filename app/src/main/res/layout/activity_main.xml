@@ -16,6 +16,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
+    <!-- ── Footer — always visible below scroll content ──────────────────── -->
+    <!-- Declared before ScrollView but placed at bottom via layout_gravity  -->
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -50,64 +53,108 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="16dp"
+                    android:animateLayoutChanges="true">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="OBD2 Connection"
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:layout_marginBottom="8dp" />
-
-                    <TextView
-                        android:id="@+id/tvConnectionStatus"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/status_disconnected"
-                        android:textColor="@color/status_neutral"
-                        android:textSize="14sp"
-                        android:layout_marginBottom="12dp" />
-
+                    <!-- ── Accordion header: always visible ──────────────────── -->
                     <LinearLayout
+                        android:id="@+id/layoutConnectionHeader"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:gravity="center_horizontal"
-                        android:layout_marginBottom="8dp">
+                        android:gravity="center_vertical"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?attr/selectableItemBackground"
+                        android:paddingVertical="4dp">
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnScan"
+                        <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:layout_marginEnd="8dp"
-                            android:text="@string/btn_scan"
-                            android:textSize="12sp"
-                            app:backgroundTint="@color/dpf_blue_light" />
+                            android:orientation="vertical">
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnDisconnect"
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="OBD2 Connection"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/tvConnectionStatus"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/status_disconnected"
+                                android:textColor="@color/status_neutral"
+                                android:textSize="13sp"
+                                android:layout_marginTop="2dp" />
+
+                        </LinearLayout>
+
+                        <!-- Chevron: ▾ = expanded, ▸ = collapsed -->
+                        <TextView
+                            android:id="@+id/tvConnectionChevron"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/btn_disconnect"
-                            android:visibility="gone"
-                            app:backgroundTint="@color/status_danger" />
+                            android:text="▾"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="18sp"
+                            android:paddingStart="8dp" />
 
                     </LinearLayout>
 
-                    <!-- ECU Scanner button - visible only when connected -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnScanEcu"
+                    <!-- ── Collapsible section: scan / disconnect / ECU ───────── -->
+                    <!-- Starts VISIBLE (disconnected = user needs to connect) -->
+                    <LinearLayout
+                        android:id="@+id/layoutConnectionButtons"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Scansiona ECU PIDs"
-                        android:textSize="12sp"
-                        android:visibility="gone"
-                        app:backgroundTint="@color/dpf_blue_dark"
-                        app:strokeColor="@color/dpf_orange"
-                        app:strokeWidth="1dp" />
+                        android:orientation="vertical"
+                        android:layout_marginTop="12dp"
+                        android:visibility="visible">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_horizontal"
+                            android:layout_marginBottom="8dp">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnScan"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginEnd="8dp"
+                                android:text="@string/btn_scan"
+                                android:textSize="12sp"
+                                app:backgroundTint="@color/dpf_blue_light" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnDisconnect"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/btn_disconnect"
+                                android:visibility="gone"
+                                app:backgroundTint="@color/status_danger" />
+
+                        </LinearLayout>
+
+                        <!-- ECU Scanner button — visible only when connected -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnScanEcu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Scansiona ECU PIDs"
+                            android:textSize="12sp"
+                            android:visibility="gone"
+                            app:backgroundTint="@color/dpf_blue_dark"
+                            app:strokeColor="@color/dpf_orange"
+                            app:strokeWidth="1dp" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -551,5 +598,68 @@
 
         </LinearLayout>
     </ScrollView>
+
+    <!-- ── Footer ──────────────────────────────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingVertical="10dp"
+        android:background="#000000">
+
+        <!-- Thin divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#0F0F0F"
+            android:layout_marginBottom="8dp"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Andrea Sesuru"
+                android:textColor="#3A4A5C"
+                android:textSize="10sp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" · "
+                android:textColor="#3A4A5C"
+                android:textSize="10sp"/>
+
+            <TextView
+                android:id="@+id/tvFooterGithub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="github.com/andreasesuru"
+                android:textColor="#003478"
+                android:textSize="10sp"
+                android:paddingVertical="4dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=" · "
+                android:textColor="#3A4A5C"
+                android:textSize="10sp"/>
+
+            <TextView
+                android:id="@+id/tvFooterVersion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="v2.2"
+                android:textColor="#3A4A5C"
+                android:textSize="10sp"/>
+
+        </LinearLayout>
+    </LinearLayout>
 
 </LinearLayout>

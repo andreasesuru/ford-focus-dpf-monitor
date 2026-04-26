@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Splash theme — black window from the very first frame, no white flash -->
+    <style name="Theme.FordFocusDPFScan.Splash" parent="Theme.FordFocusDPFScan">
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
+    <!-- Circular clip for ShapeableImageView (splash icon) -->
+    <style name="ShapeCircle">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
     <style name="Theme.FordFocusDPFScan" parent="Theme.MaterialComponents.NoActionBar">
         <!-- Brand colours -->
         <item name="colorPrimary">@color/dpf_blue_light</item>

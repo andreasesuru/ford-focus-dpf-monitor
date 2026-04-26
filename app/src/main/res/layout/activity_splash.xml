@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Splash screen layout.
+    All views start INVISIBLE — SplashActivity animates them in sequence.
+    Background is true black for AMOLED pixel savings.
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/splashRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!-- Ford Focus icon — circular clip via ShapeableImageView -->
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/splashIcon"
+        android:layout_width="140dp"
+        android:layout_height="140dp"
+        android:src="@drawable/ic_ford_focus"
+        android:scaleType="centerCrop"
+        android:alpha="0"
+        app:shapeAppearanceOverlay="@style/ShapeCircle"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/splashTitle"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintVertical_bias="0.42"
+        android:contentDescription="DPF Monitor icon"/>
+
+    <!-- App name -->
+    <TextView
+        android:id="@+id/splashTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="DPF Monitor"
+        android:textColor="#FFFFFF"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.02"
+        android:alpha="0"
+        android:layout_marginTop="20dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/splashIcon"
+        app:layout_constraintBottom_toTopOf="@id/splashSubtitle"/>
+
+    <!-- Car subtitle -->
+    <TextView
+        android:id="@+id/splashSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Ford Focus 1.5 TDCi · EDC17C70"
+        android:textColor="#003478"
+        android:textSize="13sp"
+        android:letterSpacing="0.04"
+        android:alpha="0"
+        android:layout_marginTop="6dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/splashTitle"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+    <!-- Thin Ford Blue line above credits -->
+    <View
+        android:id="@+id/splashDivider"
+        android:layout_width="48dp"
+        android:layout_height="1dp"
+        android:background="#003478"
+        android:alpha="0"
+        android:layout_marginBottom="12dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/splashCredits"/>
+
+    <!-- Developed by -->
+    <TextView
+        android:id="@+id/splashCredits"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Developed by Andrea Sesuru"
+        android:textColor="#3A4A5C"
+        android:textSize="11sp"
+        android:letterSpacing="0.04"
+        android:alpha="0"
+        android:layout_marginBottom="32dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

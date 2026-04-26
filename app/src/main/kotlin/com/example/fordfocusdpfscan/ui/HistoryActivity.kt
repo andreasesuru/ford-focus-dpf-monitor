@@ -16,6 +16,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.fordfocusdpfscan.R
 import com.example.fordfocusdpfscan.data.RegenHistoryRepository
 import com.example.fordfocusdpfscan.data.db.RegenSession
+import com.github.mikephil.charting.charts.BarChart
+import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.data.BarData
+import com.github.mikephil.charting.data.BarDataSet
+import com.github.mikephil.charting.data.BarEntry
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
@@ -58,7 +64,10 @@ class HistoryActivity : AppCompatActivity() {
                 emptyView.visibility  = if (isEmpty) View.VISIBLE else View.GONE
                 statsGroup.visibility = if (isEmpty) View.GONE   else View.VISIBLE
 
-                if (sessions.isNotEmpty()) updateStats(sessions)
+                if (sessions.isNotEmpty()) {
+                    updateStats(sessions)
+                    updateSootChart(sessions)
+                }
             }
         }
 
@@ -104,6 +113,72 @@ class HistoryActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvCompleted).text     = completed.toString()
         findViewById<TextView>(R.id.tvAvgDuration).text   = "${avgDur} min"
         findViewById<TextView>(R.id.tvAvgSootReduction).text = "−${"%.1f".format(avgSoot)}%"
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Soot BarChart — prima / dopo regen (last 8 sessions with data)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    private fun updateSootChart(sessions: List<RegenSession>) {
+        val card  = findViewById<View>(R.id.cardSootChart)
+        val chart = findViewById<BarChart>(R.id.chartSootHistory)
+
+        // Only show sessions where we have both pre and post soot data
+        val withData = sessions
+            .filter { it.preSootPct >= 0 && it.postSootPct != null }
+            .takeLast(8)
+
+        if (withData.isEmpty()) { card.visibility = View.GONE; return }
+        card.visibility = View.VISIBLE
+
+        val labels    = withData.mapIndexed { i, _ -> "#${sessions.size - withData.size + i + 1}" }
+        val preGroup  = withData.mapIndexed { i, s -> BarEntry(i.toFloat(), s.preSootPct) }
+        val postGroup = withData.mapIndexed { i, s -> BarEntry(i.toFloat(), s.postSootPct!!) }
+
+        val preSet = BarDataSet(preGroup, "Prima").apply {
+            color = 0xFFFF3B30.toInt()
+            setDrawValues(false)
+        }
+        val postSet = BarDataSet(postGroup, "Dopo").apply {
+            color = 0xFF00C853.toInt()
+            setDrawValues(false)
+        }
+
+        val barData = BarData(preSet, postSet).apply { barWidth = 0.35f }
+
+        chart.apply {
+            data = barData
+            groupBars(-0.5f, 0.1f, 0.05f)
+
+            description.isEnabled = false
+            legend.isEnabled      = false   // custom legend in XML
+            setTouchEnabled(false)
+            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+
+            xAxis.apply {
+                position         = XAxis.XAxisPosition.BOTTOM
+                setDrawGridLines(false)
+                textColor        = 0xFF7A8FA6.toInt()
+                textSize         = 9f
+                granularity      = 1f
+                setCenterAxisLabels(true)
+                valueFormatter   = IndexAxisValueFormatter(labels)
+                axisMinimum      = -0.5f
+                axisMaximum      = withData.size.toFloat() - 0.5f
+            }
+            axisLeft.apply {
+                textColor        = 0xFF7A8FA6.toInt()
+                textSize         = 9f
+                axisMinimum     = 0f
+                setDrawGridLines(true)
+                gridColor        = 0xFF1A1A2A.toInt()
+                gridLineWidth    = 0.5f
+            }
+            axisRight.isEnabled = false
+
+            animateY(600)
+            invalidate()
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════════
