@@ -1,10 +1,11 @@
 package com.example.fordfocusdpfscan.ui
 
 import android.content.Intent
+import android.view.GestureDetector
 import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GestureDetectorCompat
-import android.view.GestureDetector
+import com.example.fordfocusdpfscan.R
 import kotlin.math.abs
 
 // ═══════════════════════════════════════════════════════════════════════════════
