@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=800, initial-scale=1.0"/>
+<title>DPF Monitor — Android Auto Preview</title>
+<style>
+  :root {
+    --bg:       #0D0D0D;
+    --chrome:   #1A1A1A;
+    --surface:  #1E1E1E;
+    --surface2: #252525;
+    --border:   #2E2E2E;
+    --text:     #FFFFFF;
+    --muted:    #8A8A8A;
+    --label:    #B0B0B0;
+    --ok:       #30D158;
+    --warn:     #FF9F0A;
+    --danger:   #FF453A;
+    --accent:   #0A84FF;
+    --purple:   #BF5AF2;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: -apple-system, 'Roboto', 'Segoe UI', sans-serif;
+    padding: 20px;
+  }
+
+  /* ── State selector ──────────────────────────────────────────────── */
+  .state-bar {
+    display: flex; gap: 8px; margin-bottom: 14px;
+    align-items: center;
+  }
+  .state-label { color: #888; font-size: 11px; margin-right: 4px; }
+  .state-btn {
+    padding: 5px 14px; border-radius: 20px; border: none; cursor: pointer;
+    font-size: 11px; font-weight: 700; transition: all 0.15s;
+    background: #2a2a2a; color: #888;
+  }
+  .state-btn.active { background: #444; color: #fff; }
+  .state-btn[data-s="INACTIVE"].active  { background: #1a3a1a; color: var(--ok); }
+  .state-btn[data-s="WARNING"].active   { background: #3a2a0a; color: var(--warn); }
+  .state-btn[data-s="ACTIVE"].active    { background: #3a0a0a; color: var(--danger); }
+  .state-btn[data-s="COMPLETED"].active { background: #0a2a1a; color: var(--ok); }
+
+  /* ── Screen frame ────────────────────────────────────────────────── */
+  .screen-wrap {
+    position: relative;
+    width: 800px;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 0 0 2px #333, 0 20px 60px rgba(0,0,0,0.8);
+  }
+
+  /* ── System chrome bar ───────────────────────────────────────────── */
+  .sys-bar {
+    background: #0A0A0A;
+    height: 28px;
+    display: flex; align-items: center;
+    padding: 0 16px;
+    border-bottom: 1px solid #1e1e1e;
+    font-size: 11px; color: #777;
+    justify-content: space-between;
+  }
+  .sys-left { display: flex; align-items: center; gap: 10px; }
+  .sys-icon { font-size: 12px; }
+  .sys-right { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+  .sys-clock { font-weight: 700; color: #aaa; }
+
+  /* ── App chrome ──────────────────────────────────────────────────── */
+  .app-bar {
+    background: var(--chrome);
+    height: 44px;
+    display: flex; align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    justify-content: space-between;
+  }
+  .app-title-block { display: flex; flex-direction: column; }
+  .app-title { font-size: 15px; font-weight: 800; color: var(--text); letter-spacing: 0.01em; }
+  .app-sub   { font-size: 10px; color: var(--muted); margin-top: 0px; }
+  .app-actions { display: flex; gap: 10px; align-items: center; }
+  .btn-reconnect {
+    padding: 5px 14px; border-radius: 8px;
+    background: rgba(10,132,255,0.15); border: 1px solid rgba(10,132,255,0.3);
+    color: var(--accent); font-size: 11px; font-weight: 700; cursor: pointer;
+  }
+  .conn-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 6px var(--ok);
+  }
+
+  /* ── Main content area ───────────────────────────────────────────── */
+  .content {
+    background: var(--bg);
+    display: flex;
+    padding: 14px 16px 10px;
+    gap: 14px;
+    height: 340px;
+  }
+
+  /* ── LEFT: Status panel ──────────────────────────────────────────── */
+  .status-panel {
+    width: 240px;
+    flex-shrink: 0;
+    border-radius: 14px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px 16px;
+    gap: 10px;
+    transition: all 0.4s;
+    position: relative;
+    overflow: hidden;
+  }
+  .status-panel::before {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: 14px;
+    opacity: 0.08;
+  }
+  .status-panel.s-inactive { background: rgba(48,209,88,0.07); border: 1.5px solid rgba(48,209,88,0.2); }
+  .status-panel.s-warning  { background: rgba(255,159,10,0.08); border: 1.5px solid rgba(255,159,10,0.3); }
+  .status-panel.s-active   { background: rgba(255,69,58,0.08);  border: 1.5px solid rgba(255,69,58,0.35); }
+  .status-panel.s-complete { background: rgba(48,209,88,0.07);  border: 1.5px solid rgba(48,209,88,0.2); }
+
+  .status-emoji { font-size: 38px; line-height: 1; }
+  .status-title {
+    font-size: 17px; font-weight: 900; text-align: center; line-height: 1.2;
+    letter-spacing: -0.3px;
+  }
+  .status-title.ok       { color: var(--ok); }
+  .status-title.warn     { color: var(--warn); }
+  .status-title.danger   { color: var(--danger); }
+  .status-sub {
+    font-size: 11px; color: var(--label); text-align: center;
+    line-height: 1.4; margin-top: 2px;
+  }
+  .status-sub.danger-sub { color: #FF8A84; font-weight: 700; }
+
+  /* Pulsing glow animation for ACTIVE state */
+  @keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,69,58,0); }
+    50%       { box-shadow: 0 0 20px 6px rgba(255,69,58,0.25); }
+  }
+  @keyframes pulse-orange {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,159,10,0); }
+    50%       { box-shadow: 0 0 15px 4px rgba(255,159,10,0.2); }
+  }
+  .status-panel.s-active  { animation: pulse-red    2s ease-in-out infinite; }
+  .status-panel.s-warning { animation: pulse-orange 2.5s ease-in-out infinite; }
+
+  /* Temp + km sub-row inside status panel */
+  .status-egt-row {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    margin-top: 6px; width: 100%;
+  }
+  .egt-big {
+    font-size: 28px; font-weight: 900; letter-spacing: -1px;
+    line-height: 1;
+  }
+  .egt-label { font-size: 9px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.08em; }
+
+  /* ── RIGHT: Metrics grid ─────────────────────────────────────────── */
+  .metrics-area {
+    flex: 1;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+
+  /* Row of metric tiles */
+  .metric-row {
+    display: flex; gap: 8px; flex: 1;
+  }
+
+  /* Individual metric tile */
+  .tile {
+    flex: 1; border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 12px 14px;
+    transition: background 0.3s;
+  }
+  .tile-label {
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .tile-value-row { display: flex; align-items: baseline; gap: 3px; }
+  .tile-value {
+    font-size: 28px; font-weight: 900; line-height: 1;
+    letter-spacing: -0.5px;
+  }
+  .tile-unit {
+    font-size: 12px; font-weight: 500; color: var(--muted);
+    margin-bottom: 1px;
+  }
+  .tile-note { font-size: 9px; color: var(--muted); margin-top: 3px; }
+
+  /* Tile color states */
+  .tile-ok     .tile-value { color: var(--ok);     }
+  .tile-warn   .tile-value { color: var(--warn);   }
+  .tile-danger .tile-value { color: var(--danger); }
+  .tile-blue   .tile-value { color: var(--accent); }
+  .tile-white  .tile-value { color: var(--text);   }
+
+  /* Tile accent background for active-state context */
+  .tile-ok.tile-lit     { background: rgba(48,209,88,0.08);   border-color: rgba(48,209,88,0.2); }
+  .tile-warn.tile-lit   { background: rgba(255,159,10,0.08);  border-color: rgba(255,159,10,0.25); }
+  .tile-danger.tile-lit { background: rgba(255,69,58,0.08);   border-color: rgba(255,69,58,0.25); }
+
+  /* ── Bottom status bar ───────────────────────────────────────────── */
+  .bottom-bar {
+    background: var(--chrome);
+    height: 44px;
+    display: flex; align-items: center;
+    padding: 0 20px; gap: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .bottom-stat {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px;
+  }
+  .bottom-stat-icon { font-size: 13px; }
+  .bottom-stat-text { color: var(--label); }
+  .bottom-stat-val  { color: var(--text); font-weight: 700; }
+  .bottom-sep { width: 1px; height: 20px; background: var(--border); }
+  .bottom-spacer { flex: 1; }
+  .bottom-strategy {
+    font-size: 10px; color: var(--muted);
+    background: var(--surface2); border-radius: 6px;
+    padding: 3px 8px;
+  }
+
+  /* ── Navigation rail (Android Auto bottom nav) ───────────────────── */
+  .nav-bar {
+    background: #0A0A0A;
+    height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    gap: 60px;
+    border-top: 1px solid #1a1a1a;
+  }
+  .nav-icon { font-size: 18px; opacity: 0.4; cursor: pointer; }
+  .nav-icon.active { opacity: 1; }
+
+  /* ── Caption below screen ────────────────────────────────────────── */
+  .caption {
+    margin-top: 16px; color: #555; font-size: 11px; text-align: center;
+    line-height: 1.6; max-width: 800px;
+  }
+  .caption strong { color: #888; }
+</style>
+</head>
+<body>
+
+<!-- State selector -->
+<div class="state-bar">
+  <span class="state-label">Simula stato regen →</span>
+  <button class="state-btn" data-s="INACTIVE"  onclick="setState('INACTIVE')">🟢 Normale</button>
+  <button class="state-btn" data-s="WARNING"   onclick="setState('WARNING')">🟡 Riscaldamento</button>
+  <button class="state-btn" data-s="ACTIVE"    onclick="setState('ACTIVE')">🔴 Regen Attiva</button>
+  <button class="state-btn" data-s="COMPLETED" onclick="setState('COMPLETED')">✅ Completata</button>
+</div>
+
+<!-- Android Auto screen simulation -->
+<div class="screen-wrap">
+
+  <!-- System chrome -->
+  <div class="sys-bar">
+    <div class="sys-left">
+      <span class="sys-icon">🚗</span>
+      <span>Android Auto</span>
+    </div>
+    <div class="sys-right">
+      <span class="sys-icon">📶</span>
+      <span class="sys-icon">🔋</span>
+      <span class="sys-clock" id="sysTime">13:16</span>
+    </div>
+  </div>
+
+  <!-- App header -->
+  <div class="app-bar">
+    <div class="app-title-block">
+      <span class="app-title">DPF Monitor</span>
+      <span class="app-sub">Ford Focus 1.5 TDCi · EDC17C70</span>
+    </div>
+    <div class="app-actions">
+      <div class="conn-dot" id="connDot"></div>
+      <button class="btn-reconnect">↺ &nbsp;Riconnetti</button>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="content">
+
+    <!-- LEFT: Regen status panel -->
+    <div class="status-panel s-inactive" id="statusPanel">
+      <div class="status-emoji" id="statusEmoji">✅</div>
+      <div class="status-title ok" id="statusTitle">NORMALE</div>
+      <div class="status-sub" id="statusSub">DPF a riposo — motore spegnibile in sicurezza</div>
+
+      <div class="status-egt-row">
+        <div class="egt-label">EGT (gas scarico)</div>
+        <div class="egt-big" id="egtBig" style="color:var(--ok)">185°</div>
+        <div class="egt-label">Normale 150–400°C</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Metrics grid -->
+    <div class="metrics-area">
+
+      <!-- Row 1: Soot % | Load % | Delta P -->
+      <div class="metric-row">
+
+        <div class="tile tile-ok tile-lit" id="tileSoot">
+          <div class="tile-label">Soot DPF</div>
+          <div class="tile-value-row">
+            <span class="tile-value" id="valSoot">14</span>
+            <span class="tile-unit">%</span>
+          </div>
+          <div class="tile-note" id="noteSoot">Normale · max 100% = regen forzata</div>
+        </div>
+
+        <div class="tile tile-ok tile-lit" id="tileLoad">
+          <div class="tile-label">Load DPF</div>
+          <div class="tile-value-row">
+            <span class="tile-value" id="valLoad">8</span>
+            <span class="tile-unit">%</span>
+          </div>
+          <div class="tile-note" id="noteLoad">Pressione · ok &lt; 50%</div>
+        </div>
+
+        <div class="tile tile-ok" id="tileDeltaP">
+          <div class="tile-label">Delta P</div>
+          <div class="tile-value-row">
+            <span class="tile-value" id="valDeltaP">0.8</span>
+            <span class="tile-unit">kPa</span>
+          </div>
+          <div class="tile-note" id="noteDeltaP">idle ~0 · guida &lt;15</div>
+        </div>
+
+      </div>
+
+      <!-- Row 2: Coolant | Oil Temp | Km ultima regen -->
+      <div class="metric-row">
+
+        <div class="tile tile-ok tile-lit" id="tileCoolant">
+          <div class="tile-label">Refrigerante</div>
+          <div class="tile-value-row">
+            <span class="tile-value" id="valCoolant">89</span>
+            <span class="tile-unit">°C</span>
+          </div>
+          <div class="tile-note">Ottimale 85–105°C</div>
+        </div>
+
+        <div class="tile tile-ok tile-lit" id="tileOil">
+          <div class="tile-label">Olio motore</div>
+          <div class="tile-value-row">
+            <span class="tile-value" id="valOil">95</span>
+            <span class="tile-unit">°C</span>
+          </div>
+          <div class="tile-note" id="noteOil">Ottimale 90–115°C</div>
+        </div>
+
+        <div class="tile tile-white" id="tileKmRegen">
+          <div class="tile-label">Da ultima regen</div>
+          <div class="tile-value-row">
+            <span class="tile-value" id="valKmRegen" style="font-size:22px">411</span>
+            <span class="tile-unit">km</span>
+          </div>
+          <div class="tile-note" id="noteKmRegen">Media ~430 km/regen</div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Bottom status bar -->
+  <div class="bottom-bar">
+    <div class="bottom-stat">
+      <span class="bottom-stat-icon">🔧</span>
+      <span class="bottom-stat-text">Tagliando:</span>
+      <span class="bottom-stat-val">8.979 km fa</span>
+    </div>
+    <div class="bottom-sep"></div>
+    <div class="bottom-stat">
+      <span class="bottom-stat-icon">📍</span>
+      <span class="bottom-stat-text">Odometro:</span>
+      <span class="bottom-stat-val">154.022 km</span>
+    </div>
+    <div class="bottom-spacer"></div>
+    <div class="bottom-strategy" id="strategyBadge">Strategia: EGT fallback</div>
+  </div>
+
+  <!-- Android Auto nav rail -->
+  <div class="nav-bar">
+    <span class="nav-icon">◀</span>
+    <span class="nav-icon active">🏠</span>
+    <span class="nav-icon">🎵</span>
+    <span class="nav-icon">📞</span>
+  </div>
+
+</div>
+
+<!-- Caption -->
+<div class="caption">
+  <strong>Simulazione Android Auto — PaneTemplate</strong> &nbsp;·&nbsp;
+  Schermo 800×480 · Landscape forzato · Car App Library v1.4<br>
+  I dati si aggiornano in tempo reale tramite BLE → DpfForegroundService → DpfRepository
+</div>
+
+<script>
+  /* Live clock */
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('sysTime').textContent =
+      String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+
+  /* State definitions */
+  const STATES = {
+    INACTIVE: {
+      panel:      's-inactive',
+      emoji:      '✅',
+      titleText:  'NORMALE',
+      titleClass: 'ok',
+      sub:        'DPF a riposo — motore spegnibile in sicurezza',
+      subClass:   '',
+      egt:        '185°', egtColor: 'var(--ok)',
+      egtNote:    'Normale 150–400°C',
+      soot: '14', sootClass: 'tile-ok tile-lit', sootNote: 'Normale · max 100% = regen forzata',
+      load: '8',  loadClass: 'tile-ok tile-lit', loadNote: 'Pressione · ok < 50%',
+      deltaP: '0.8', deltaPClass: 'tile-ok', deltaPNote: 'idle ~0 · guida <15',
+      coolant: '89', coolantClass: 'tile-ok tile-lit',
+      oil: '95',  oilClass: 'tile-ok tile-lit', oilNote: 'Ottimale 90–115°C',
+      km: '411',  kmNote: 'Media ~430 km/regen', kmClass: 'tile-white',
+      strategy: 'Strategia: EGT fallback',
+    },
+    WARNING: {
+      panel:      's-warning',
+      emoji:      '⚠️',
+      titleText:  'RISCALDAMENTO',
+      titleClass: 'warn',
+      sub:        'EGT elevata — possibile regen passiva in corso',
+      subClass:   '',
+      egt:        '487°', egtColor: 'var(--warn)',
+      egtNote:    'Range passiva 350–550°C',
+      soot: '52', sootClass: 'tile-warn tile-lit', sootNote: 'Attenzione · avvicina alla soglia regen',
+      load: '48', loadClass: 'tile-warn tile-lit', loadNote: 'In crescita',
+      deltaP: '8.2', deltaPClass: 'tile-warn tile-lit', deltaPNote: 'Filtro in caricamento',
+      coolant: '91', coolantClass: 'tile-ok tile-lit',
+      oil: '102', oilClass: 'tile-ok tile-lit', oilNote: 'Ottimale 90–115°C',
+      km: '812',  kmNote: '⚠ Oltre la media — regen attesa', kmClass: 'tile-warn',
+      strategy: 'Strategia: EGT fallback',
+    },
+    ACTIVE: {
+      panel:      's-active',
+      emoji:      '🔥',
+      titleText:  'REGEN ATTIVA',
+      titleClass: 'danger',
+      sub:        '⚠ Non spegnere il motore!',
+      subClass:   'danger-sub',
+      egt:        '612°', egtColor: 'var(--danger)',
+      egtNote:    'Range attiva 550–700°C',
+      soot: '52', sootClass: 'tile-warn tile-lit', sootNote: 'In combustione ↓',
+      load: '48', loadClass: 'tile-warn tile-lit', loadNote: 'In diminuzione',
+      deltaP: '12.4', deltaPClass: 'tile-warn tile-lit', deltaPNote: 'Picco regen — normale',
+      coolant: '92', coolantClass: 'tile-ok tile-lit',
+      oil: '108', oilClass: 'tile-warn tile-lit', oilNote: '⚠ Possibile diluizione gasolio',
+      km: '812',  kmNote: 'Regen in corso · non interrompere', kmClass: 'tile-danger',
+      strategy: 'Strategia: EGT fallback · confermata',
+    },
+    COMPLETED: {
+      panel:      's-complete',
+      emoji:      '✅',
+      titleText:  'COMPLETATA',
+      titleClass: 'ok',
+      sub:        'Rigenerazione riuscita — DPF pulito',
+      subClass:   '',
+      egt:        '312°', egtColor: 'var(--ok)',
+      egtNote:    'Raffreddamento in corso',
+      soot: '2',  sootClass: 'tile-ok tile-lit', sootNote: '✓ DPF rigenerato con successo',
+      load: '3',  loadClass: 'tile-ok tile-lit', loadNote: '✓ Pressione ristabilita',
+      deltaP: '0.3', deltaPClass: 'tile-ok', deltaPNote: 'Filtro pulito',
+      coolant: '91', coolantClass: 'tile-ok tile-lit',
+      oil: '105', oilClass: 'tile-ok tile-lit', oilNote: 'Verifica livello olio consigliata',
+      km: '0',    kmNote: '✓ Reset effettuato dalla ECU', kmClass: 'tile-ok tile-lit',
+      strategy: 'Strategia: EGT fallback · ciclo chiuso',
+    },
+  };
+
+  let currentState = 'INACTIVE';
+
+  function setState(s) {
+    currentState = s;
+    const d = STATES[s];
+
+    // Panel
+    const panel = document.getElementById('statusPanel');
+    panel.className = 'status-panel ' + d.panel;
+
+    // Emoji + title + sub
+    document.getElementById('statusEmoji').textContent = d.emoji;
+    const title = document.getElementById('statusTitle');
+    title.textContent = d.titleText;
+    title.className = 'status-title ' + d.titleClass;
+    const sub = document.getElementById('statusSub');
+    sub.textContent = d.sub;
+    sub.className = 'status-sub ' + (d.subClass || '');
+
+    // EGT big
+    document.getElementById('egtBig').textContent = d.egt;
+    document.getElementById('egtBig').style.color = d.egtColor;
+    document.getElementById('egtBig').nextElementSibling.textContent = d.egtNote;
+
+    // Tiles
+    setTile('tileSoot', 'valSoot', 'noteSoot', d.soot, d.sootClass, d.sootNote);
+    setTile('tileLoad', 'valLoad', 'noteLoad', d.load, d.loadClass, d.loadNote);
+    setTile('tileDeltaP', 'valDeltaP', 'noteDeltaP', d.deltaP, d.deltaPClass, d.deltaPNote);
+    setTile('tileCoolant', 'valCoolant', null, d.coolant, d.coolantClass, null);
+    setTile('tileOil', 'valOil', 'noteOil', d.oil, d.oilClass, d.oilNote);
+    setTile('tileKmRegen', 'valKmRegen', 'noteKmRegen', d.km, d.kmClass, d.kmNote);
+
+    document.getElementById('strategyBadge').textContent = d.strategy;
+
+    // Buttons
+    document.querySelectorAll('.state-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.s === s);
+    });
+  }
+
+  function setTile(tileId, valId, noteId, val, cls, note) {
+    document.getElementById(tileId).className = 'tile ' + cls;
+    document.getElementById(valId).textContent = val;
+    if (noteId && note) document.getElementById(noteId).textContent = note;
+  }
+
+  // Init
+  setState('INACTIVE');
+  // Activate the INACTIVE button
+  document.querySelector('[data-s="INACTIVE"]').classList.add('active');
+</script>
+</body>
+</html>

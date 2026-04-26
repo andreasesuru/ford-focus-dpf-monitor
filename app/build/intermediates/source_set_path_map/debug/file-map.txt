@@ -1,0 +1,53 @@
+com.example.fordfocusdpfscan.app-app-1.4.0-0 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\0193a0fa438a1df79cdb853a38e9888e\transformed\app-1.4.0\res
+com.example.fordfocusdpfscan.app-core-ktx-1.13.0-1 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\02f27acac9af876a29667de043e95bb0\transformed\core-ktx-1.13.0\res
+com.example.fordfocusdpfscan.app-lifecycle-livedata-2.7.0-2 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\14cb012019a0deb6e4682777c9e9c55a\transformed\lifecycle-livedata-2.7.0\res
+com.example.fordfocusdpfscan.app-shimmer-0.5.0-3 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\1e2310eea66eb73422fd6c3d61ff9d2c\transformed\shimmer-0.5.0\res
+com.example.fordfocusdpfscan.app-lifecycle-runtime-2.7.0-4 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\1f2d5fe7797bcfb1abce1b8a6a08d1f1\transformed\lifecycle-runtime-2.7.0\res
+com.example.fordfocusdpfscan.app-customview-poolingcontainer-1.0.0-5 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\247d85a917bced6953db8e0a9749e23f\transformed\customview-poolingcontainer-1.0.0\res
+com.example.fordfocusdpfscan.app-lottie-6.4.0-6 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\2a37672bcb04db8b409e292d93fd2ae4\transformed\lottie-6.4.0\res
+com.example.fordfocusdpfscan.app-emoji2-1.2.0-7 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\2f2ade0e04d08fda51b1795e021c1153\transformed\emoji2-1.2.0\res
+com.example.fordfocusdpfscan.app-annotation-experimental-1.4.0-8 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\362375b213edd28582f8cce24a6f3b0e\transformed\annotation-experimental-1.4.0\res
+com.example.fordfocusdpfscan.app-savedstate-ktx-1.2.1-9 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\4118e5eaf2093c1ce889e725fc4525f3\transformed\savedstate-ktx-1.2.1\res
+com.example.fordfocusdpfscan.app-material-1.12.0-10 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\44ab4edd35cfbcaa3e839a1229415586\transformed\material-1.12.0\res
+com.example.fordfocusdpfscan.app-viewpager2-1.1.0-beta02-11 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\453d62e12fb4e783d50c8370f6035d05\transformed\viewpager2-1.1.0-beta02\res
+com.example.fordfocusdpfscan.app-lifecycle-process-2.7.0-12 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\482bd67075eaff36d672cd3ecbc1dcd9\transformed\lifecycle-process-2.7.0\res
+com.example.fordfocusdpfscan.app-cardview-1.0.0-13 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\5005dc92ce452095e99e86f34850faaf\transformed\cardview-1.0.0\res
+com.example.fordfocusdpfscan.app-recyclerview-1.3.2-14 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\506291eb43c4104d19a0f3ba3b938e04\transformed\recyclerview-1.3.2\res
+com.example.fordfocusdpfscan.app-activity-ktx-1.8.2-15 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\50f4d26f2fd7b88cef5e614ce88d2524\transformed\activity-ktx-1.8.2\res
+com.example.fordfocusdpfscan.app-preference-ktx-1.2.1-16 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\521bd7afd50fe570a7529698c8e171de\transformed\preference-ktx-1.2.1\res
+com.example.fordfocusdpfscan.app-room-ktx-2.6.1-17 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\54420db0e49667147f1685d5af587ebd\transformed\room-ktx-2.6.1\res
+com.example.fordfocusdpfscan.app-coordinatorlayout-1.1.0-18 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\5a10607cf990fdfe15c46a545c921f40\transformed\coordinatorlayout-1.1.0\res
+com.example.fordfocusdpfscan.app-lifecycle-viewmodel-2.7.0-19 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\5b799cb3ce5168d82f2c9b624c10ec70\transformed\lifecycle-viewmodel-2.7.0\res
+com.example.fordfocusdpfscan.app-fragment-1.3.6-20 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\6174186f0514395ac88bff3eff71a43d\transformed\fragment-1.3.6\res
+com.example.fordfocusdpfscan.app-savedstate-1.2.1-21 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\708d54ec304ec821125305d135f29560\transformed\savedstate-1.2.1\res
+com.example.fordfocusdpfscan.app-activity-1.8.2-22 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\74d9540a6b6acb3fcc57642f3c4e0e7f\transformed\activity-1.8.2\res
+com.example.fordfocusdpfscan.app-lifecycle-runtime-ktx-2.7.0-23 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\7716aee1a6632f40b315a89ce2bc0ba0\transformed\lifecycle-runtime-ktx-2.7.0\res
+com.example.fordfocusdpfscan.app-window-1.0.0-24 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\849091744055216a7756d53204e883af\transformed\window-1.0.0\res
+com.example.fordfocusdpfscan.app-startup-runtime-1.1.1-25 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\84e8712e3a5a0eec8b8b75f293c45ca7\transformed\startup-runtime-1.1.1\res
+com.example.fordfocusdpfscan.app-emoji2-views-helper-1.2.0-26 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\8592493d36da168397f827b7f1c16477\transformed\emoji2-views-helper-1.2.0\res
+com.example.fordfocusdpfscan.app-slidingpanelayout-1.2.0-27 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\87d7860f70873d3250b36734e066e238\transformed\slidingpanelayout-1.2.0\res
+com.example.fordfocusdpfscan.app-lifecycle-viewmodel-savedstate-2.7.0-28 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\9ee8d5e24c67a6a9a7d6e5aa79ac3f4a\transformed\lifecycle-viewmodel-savedstate-2.7.0\res
+com.example.fordfocusdpfscan.app-lifecycle-service-2.7.0-29 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\9f4780e5af78e04424f774981a6366be\transformed\lifecycle-service-2.7.0\res
+com.example.fordfocusdpfscan.app-sqlite-framework-2.4.0-30 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\ac82c0a0cc483ea795f9db7cba25bb50\transformed\sqlite-framework-2.4.0\res
+com.example.fordfocusdpfscan.app-drawerlayout-1.1.1-31 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\af175ef4cac58644dc95d4285ab57d6a\transformed\drawerlayout-1.1.1\res
+com.example.fordfocusdpfscan.app-room-runtime-2.6.1-32 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\b13d3fc4979b8078e1084b716074a66f\transformed\room-runtime-2.6.1\res
+com.example.fordfocusdpfscan.app-preference-1.2.1-33 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\b191b795643e63c3a48faa30152d9b22\transformed\preference-1.2.1\res
+com.example.fordfocusdpfscan.app-lifecycle-livedata-core-ktx-2.7.0-34 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\bef6d953390cad2781ff99775e057e1d\transformed\lifecycle-livedata-core-ktx-2.7.0\res
+com.example.fordfocusdpfscan.app-sqlite-2.4.0-35 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\c5c2b0d49bea584c8845bc063d794e62\transformed\sqlite-2.4.0\res
+com.example.fordfocusdpfscan.app-transition-1.5.0-36 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\cfd63042ac45f51ba93dfdf738bf1633\transformed\transition-1.5.0\res
+com.example.fordfocusdpfscan.app-media-1.6.0-37 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d0f51a5139bd264b5ab7db7b3c71cc18\transformed\media-1.6.0\res
+com.example.fordfocusdpfscan.app-profileinstaller-1.3.0-38 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\res
+com.example.fordfocusdpfscan.app-appcompat-resources-1.6.1-39 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\e48236f020935b9ed153f17049aeea9f\transformed\appcompat-resources-1.6.1\res
+com.example.fordfocusdpfscan.app-core-1.13.0-40 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\eb4afd58f88e94a2e837dbf4364ee0ae\transformed\core-1.13.0\res
+com.example.fordfocusdpfscan.app-lifecycle-livedata-core-2.7.0-41 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\f59917f83d86089a78ac3d5e35d5710c\transformed\lifecycle-livedata-core-2.7.0\res
+com.example.fordfocusdpfscan.app-appcompat-1.6.1-42 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\f6767a661af2c127ab505322c01c1dc5\transformed\appcompat-1.6.1\res
+com.example.fordfocusdpfscan.app-core-runtime-2.2.0-43 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\f93305d5dfcf2eb37cfc930d2984e059\transformed\core-runtime-2.2.0\res
+com.example.fordfocusdpfscan.app-constraintlayout-2.1.4-44 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\fd5c912f7d08e8621a0339c8d28381ba\transformed\constraintlayout-2.1.4\res
+com.example.fordfocusdpfscan.app-lifecycle-viewmodel-ktx-2.7.0-45 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\fe59958f3f8fc3629ff65daad70eaa00\transformed\lifecycle-viewmodel-ktx-2.7.0\res
+com.example.fordfocusdpfscan.app-pngs-46 C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\build\generated\res\pngs\debug
+com.example.fordfocusdpfscan.app-resValues-47 C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\build\generated\res\resValues\debug
+com.example.fordfocusdpfscan.app-packageDebugResources-48 C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.example.fordfocusdpfscan.app-packageDebugResources-49 C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.example.fordfocusdpfscan.app-merged_res-50 C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\build\intermediates\merged_res\debug
+com.example.fordfocusdpfscan.app-debug-51 C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\debug\res
+com.example.fordfocusdpfscan.app-main-52 C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\res

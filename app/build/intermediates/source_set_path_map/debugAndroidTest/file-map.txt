@@ -1,0 +1,6 @@
+com.example.fordfocusdpfscan.test.app-core-1.5.0-0 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\539cfcaa32f89d002277561e033a2587\transformed\core-1.5.0\res
+com.example.fordfocusdpfscan.test.app-annotation-experimental-1.3.1-1 C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\9c266e0ad0f7a1b10f768be20dca69b2\transformed\annotation-experimental-1.3.1\res
+com.example.fordfocusdpfscan.test.app-androidTest-2 C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\build\generated\res\resValues\androidTest\debug
+com.example.fordfocusdpfscan.test.app-mergeDebugAndroidTestResources-3 C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
+com.example.fordfocusdpfscan.test.app-mergeDebugAndroidTestResources-4 C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
+com.example.fordfocusdpfscan.test.app-merged_res-5 C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\build\intermediates\merged_res\debugAndroidTest

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FordFocusDPFScan" parent="Theme.MaterialComponents.NoActionBar">
+        <!-- Brand colours -->
+        <item name="colorPrimary">@color/dpf_blue_light</item>
+        <item name="colorPrimaryVariant">@color/dpf_blue_mid</item>
+        <item name="colorOnPrimary">@color/text_primary</item>
+        <item name="colorSecondary">@color/dpf_orange</item>
+        <item name="colorOnSecondary">@color/text_primary</item>
+
+        <!-- Surface / background — forces Material cards, dialogs, sheets
+             to use the dark-blue palette instead of default grey surfaces.
+             NOTE: colorBackground (no namespace) is NOT a valid MDC attribute —
+             only android:colorBackground is. colorOnBackground IS valid in MDC. -->
+        <item name="colorSurface">@color/card_background</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorOnBackground">@color/text_primary</item>
+
+        <!-- Status bar / nav bar -->
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

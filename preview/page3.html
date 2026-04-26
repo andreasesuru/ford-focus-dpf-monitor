@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=390, initial-scale=1.0"/>
+<title>DPF Monitor — Storico</title>
+<style>
+  :root {
+    --bg:          #080808;
+    --surface:     #111111;
+    --surface2:    #181818;
+    --border:      #222222;
+    --accent:      #4F8EF7;
+    --ok:          #34C759;
+    --warn:        #FF9F0A;
+    --danger:      #FF3B30;
+    --text:        #F0F0F5;
+    --text-muted:  #6E6E8A;
+    --text-label:  #9898B0;
+    --purple:      #BF5AF2;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    min-height: 100vh; display: flex; justify-content: center;
+  }
+  .phone {
+    width: 390px; min-height: 100vh; background: var(--bg);
+    display: flex; flex-direction: column;
+    overflow-y: auto; padding-bottom: 36px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 20px 12px; background: var(--bg);
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .app-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    overflow: hidden; display: flex; align-items: center; justify-content: center;
+    background: #1a1a1a;
+  }
+  .app-icon img { width: 40px; height: 40px; object-fit: cover; border-radius: 12px; filter: grayscale(1); }
+  .app-name { font-size: 17px; font-weight: 700; }
+  .app-sub  { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .version-badge {
+    font-size: 11px; font-weight: 600; color: var(--accent);
+    background: rgba(79,142,247,0.12); border: 1px solid rgba(79,142,247,0.25);
+    border-radius: 6px; padding: 3px 8px;
+  }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex; padding: 6px 16px 10px; gap: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-item {
+    flex: 1; padding: 9px 0; text-align: center;
+    font-size: 13px; font-weight: 600; border-radius: 10px;
+    color: var(--text-muted); cursor: pointer; text-decoration: none;
+    border: 1px solid transparent;
+  }
+  .tab-item.active { background: var(--surface); color: var(--text); border-color: var(--border); }
+
+  /* ── Section label ── */
+  .section-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.2px; color: var(--text-muted);
+    padding: 14px 20px 6px;
+  }
+
+  /* ── Score cards ── */
+  .score-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; padding: 0 16px; margin-bottom: 10px;
+  }
+  .score-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px;
+  }
+  .score-card-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 10px;
+  }
+  .score-ring-wrap { display: flex; align-items: center; gap: 12px; }
+  .score-ring {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; position: relative;
+  }
+  .score-num { font-size: 18px; font-weight: 800; line-height: 1; }
+  .score-pct { font-size: 10px; color: var(--text-muted); }
+  .score-details { flex: 1; }
+  .score-grade  { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .score-detail { font-size: 10px; color: var(--text-muted); line-height: 1.5; }
+
+  /* ring backgrounds */
+  .ring-ok     { background: rgba(52,199,89,0.12);  }
+  .ring-warn   { background: rgba(255,159,10,0.12); }
+  .ring-danger { background: rgba(255,59,48,0.10);  }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px; padding: 0 16px; margin-bottom: 10px;
+  }
+  .stat-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 11px 8px; text-align: center;
+  }
+  .stat-val  { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .stat-label{ font-size: 9px; color: var(--text-muted); margin-top: 3px;
+    text-transform: uppercase; letter-spacing: 0.6px; }
+
+  /* ── Export button ── */
+  .export-area { padding: 0 16px 4px; }
+  .btn-export {
+    width: 100%; padding: 13px;
+    background: transparent; border: 1px solid var(--accent);
+    border-radius: 14px; color: var(--accent);
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+
+  /* ── Session cards ── */
+  .session-card {
+    margin: 0 16px 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+  }
+  .session-card.interrupted { opacity: 0.75; }
+
+  .session-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 13px 14px 10px;
+  }
+  .session-head-left { display: flex; align-items: center; gap: 10px; }
+  .session-num {
+    width: 32px; height: 32px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; flex-shrink: 0;
+  }
+  .num-ok   { background: rgba(52,199,89,0.15);  color: var(--ok); }
+  .num-warn { background: rgba(255,159,10,0.15); color: var(--warn); }
+
+  .session-date { font-size: 13px; font-weight: 700; }
+  .session-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* Badges row */
+  .badges-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .badge {
+    font-size: 9px; font-weight: 700; border-radius: 4px;
+    padding: 2px 6px; text-transform: uppercase; letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  .badge-ok     { background: rgba(52,199,89,0.15);  color: var(--ok); }
+  .badge-warn   { background: rgba(255,159,10,0.15); color: var(--warn); }
+  .badge-danger { background: rgba(255,59,48,0.12);  color: var(--danger); }
+  .badge-accent { background: rgba(79,142,247,0.15); color: var(--accent); }
+  .badge-purple { background: rgba(191,90,242,0.15); color: var(--purple); }
+
+  /* Data grid */
+  .session-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--border);
+  }
+  .session-cell {
+    padding: 10px 14px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .session-cell:nth-child(2n) { border-right: none; }
+  .session-cell:nth-last-child(-n+2) { border-bottom: none; }
+  .cell-label { font-size: 9px; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.6px; margin-bottom: 4px; }
+  .cell-val   { font-size: 14px; font-weight: 700; }
+  .cell-sub   { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+  .soot-change { display: flex; align-items: center; gap: 4px; }
+  .soot-arrow  { font-size: 11px; }
+
+  /* Regen type explanation pill */
+  .regen-type-row {
+    padding: 9px 14px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .regen-type-icon {
+    width: 24px; height: 24px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; flex-shrink: 0;
+  }
+  .regen-type-text { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+  .regen-type-text b { color: var(--text-label); }
+
+  /* EGT sparkline */
+  .session-chart {
+    border-top: 1px solid var(--border);
+    padding: 8px 14px;
+    display: flex; align-items: flex-end; gap: 8px;
+  }
+  .chart-label { font-size: 9px; color: var(--text-muted); flex-shrink: 0;
+    text-transform: uppercase; letter-spacing: 0.5px; padding-bottom: 2px; }
+  .sparkline { flex: 1; height: 26px; display: flex; align-items: flex-end; gap: 2px; }
+  .spark-bar { flex: 1; border-radius: 2px 2px 0 0; }
+  .chart-note { font-size: 10px; color: var(--text-muted); flex-shrink: 0; padding-bottom: 2px; }
+
+  /* Warning note */
+  .warn-note {
+    padding: 10px 14px; border-top: 1px solid #2A1F00;
+    background: #100C00;
+    font-size: 11px; color: var(--warn); line-height: 1.5;
+  }
+
+  /* ── Accordion (Come migliorare) ── */
+  .accordion-trigger {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 14px; margin-top: 10px;
+    background: #0D1625; border: 1px solid #1A2E50;
+    border-radius: 10px; cursor: pointer; user-select: none;
+  }
+  .accordion-trigger-left { display: flex; align-items: center; gap: 8px; }
+  .accordion-label { font-size: 12px; font-weight: 700; color: var(--accent); }
+  .accordion-sub   { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+  .chevron { font-size: 11px; color: var(--text-muted); transition: transform 0.25s ease; display: inline-block; }
+  .chevron.open { transform: rotate(180deg); }
+
+  .accordion-body {
+    display: none; flex-direction: column;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; margin-top: 6px; overflow: hidden;
+  }
+  .accordion-body.open { display: flex; }
+
+  .acc-section { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .acc-section:last-child { border-bottom: none; }
+  .acc-section-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.9px; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .acc-tip {
+    display: flex; align-items: flex-start; gap: 9px;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+  }
+  .acc-tip:last-child { border-bottom: none; padding-bottom: 0; }
+  .acc-tip:first-of-type { padding-top: 0; }
+
+  .tip-icon {
+    width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 13px; margin-top: 1px;
+  }
+  .ic-green  { background: rgba(52,199,89,0.12); }
+  .ic-blue   { background: rgba(79,142,247,0.12); }
+  .ic-orange { background: rgba(255,159,10,0.12); }
+  .ic-red    { background: rgba(255,59,48,0.10); }
+  .ic-purple { background: rgba(191,90,242,0.12); }
+
+  .tip-body { flex: 1; }
+  .tip-title { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+  .tip-desc  { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+  .tip-badge {
+    display: inline-block; margin-top: 4px; font-size: 9px; font-weight: 700;
+    border-radius: 4px; padding: 1px 6px; letter-spacing: 0.4px;
+  }
+  .tb-high   { background: rgba(52,199,89,0.15);  color: var(--ok); }
+  .tb-medium { background: rgba(255,159,10,0.12); color: var(--warn); }
+  .tb-info   { background: rgba(79,142,247,0.12); color: var(--accent); }
+
+  /* ── Monitor period banner ── */
+  .monitor-period {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px 4px;
+    font-size: 11px; color: var(--text-muted);
+    border-bottom: 1px solid transparent;
+  }
+  .period-icon { font-size: 13px; line-height: 1; }
+  .period-text { flex: 1; line-height: 1.4; }
+  .period-text strong { color: var(--text-label); font-weight: 600; }
+  .period-days {
+    font-size: 11px; font-weight: 700; color: var(--accent);
+    background: rgba(79,142,247,0.10); border: 1px solid rgba(79,142,247,0.18);
+    border-radius: 6px; padding: 2px 8px; white-space: nowrap;
+  }
+</style>
+
+<script>
+  /* ── Monitor period: calcolato dalla prima regen registrata → oggi ── */
+  document.addEventListener('DOMContentLoaded', function() {
+    const MONTHS_IT = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+    function fmt(d) { return d.getDate() + ' ' + MONTHS_IT[d.getMonth()] + ' ' + d.getFullYear(); }
+
+    const firstRegen = new Date(2026, 0, 3);   // 3 gennaio 2026 — prima regen
+    const today      = new Date();
+    const days       = Math.max(0, Math.floor((today - firstRegen) / 86400000));
+
+    document.getElementById('dateFrom').textContent  = fmt(firstRegen);
+    document.getElementById('dateToday').textContent = fmt(today);
+    document.getElementById('dayCount').textContent  = days + ' giorni';
+  });
+
+  function toggleAcc() {
+    const body    = document.getElementById('accBody');
+    const chevron = document.getElementById('accChevron');
+    const open    = body.classList.toggle('open');
+    chevron.classList.toggle('open', open);
+  }
+</script>
+</head>
+<body>
+<div class="phone">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="app-icon"><img src="ford_icon.png" alt=""/></div>
+      <div>
+        <div class="app-name">DPF Monitor</div>
+        <div class="app-sub">Ford Focus 1.5 TDCi · EDC17C70</div>
+      </div>
+    </div>
+    <div class="version-badge">v2.2</div>
+  </div>
+
+  <div class="tab-bar">
+    <a href="index.html" class="tab-item">🔍 Monitor</a>
+    <a href="page2.html" class="tab-item">📡 Diagnostica</a>
+    <a href="page3.html" class="tab-item active">📋 Storico</a>
+  </div>
+
+  <!-- ══ MONITOR PERIOD ══ -->
+  <div class="monitor-period">
+    <span class="period-icon">📅</span>
+    <span class="period-text">Dati raccolti dal <strong id="dateFrom">—</strong> · oggi <strong id="dateToday">—</strong></span>
+    <span class="period-days" id="dayCount">— giorni</span>
+  </div>
+
+  <!-- ══ SCORE CARDS ══ -->
+  <div class="section-label">Valutazione</div>
+
+  <div class="score-grid">
+
+    <!-- DPF Health -->
+    <div class="score-card">
+      <div class="score-card-label">🏥 Salute DPF</div>
+      <div class="score-ring-wrap">
+        <div class="score-ring ring-ok">
+          <div style="text-align:center">
+            <div class="score-num ok">78</div>
+            <div class="score-pct">/ 100</div>
+          </div>
+        </div>
+        <div class="score-details">
+          <div class="score-grade ok">Buono</div>
+          <div class="score-detail">
+            Ash 8% ✓<br>
+            Soot medio ✓<br>
+            Freq. regen ok
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Driving Score -->
+    <div class="score-card">
+      <div class="score-card-label">🏎️ Guida DPF</div>
+      <div class="score-ring-wrap">
+        <div class="score-ring ring-warn">
+          <div style="text-align:center">
+            <div class="score-num warn">61</div>
+            <div class="score-pct">/ 100</div>
+          </div>
+        </div>
+        <div class="score-details">
+          <div class="score-grade warn">Sufficiente</div>
+          <div class="score-detail">
+            1 regen int. −15<br>
+            1× motore fr. −8<br>
+            Completa in auto!</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Score detail explanation -->
+  <div style="margin:0 16px 10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;">
+    <div style="font-size:11px;font-weight:700;color:var(--text-label);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.8px">📊 Dettaglio punteggio</div>
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <!-- Health factors -->
+      <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px">Salute DPF</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--text-muted)">🪨 Ash level (8%)</span>
+        <span style="font-size:11px;font-weight:700;color:var(--ok)">+28 / 30</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--text-muted)">📉 Regens interrotte (1/47 = 2%)</span>
+        <span style="font-size:11px;font-weight:700;color:var(--ok)">+19 / 20</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--text-muted)">💨 Soot attuale (14%)</span>
+        <span style="font-size:11px;font-weight:700;color:var(--ok)">+18 / 20</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--text-muted)">📏 Km medi tra regens (~430 km)</span>
+        <span style="font-size:11px;font-weight:700;color:var(--warn)">+9 / 15</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--text-muted)">🌡️ EGT picco medio (600°C)</span>
+        <span style="font-size:11px;font-weight:700;color:var(--ok)">+14 / 15</span>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:4px 0"></div>
+
+      <!-- Driving factors -->
+      <div style="font-size:10px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px">Guida DPF</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--text-muted)">✅ Regens completate (46/47)</span>
+        <span style="font-size:11px;font-weight:700;color:var(--ok)">+84 base</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--text-muted)">⛔ Regen interrotta (×1)</span>
+        <span style="font-size:11px;font-weight:700;color:var(--danger)">−15</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--text-muted)">🥶 Motore freddo a inizio regen (×1)</span>
+        <span style="font-size:11px;font-weight:700;color:var(--warn)">−8</span>
+      </div>
+    </div>
+
+    <!-- Accordion trigger -->
+    <div class="accordion-trigger" onclick="toggleAcc()">
+      <div class="accordion-trigger-left">
+        <span style="font-size:16px">💡</span>
+        <div>
+          <div class="accordion-label">Come migliorare</div>
+          <div class="accordion-sub">Consigli personalizzati su guida e manutenzione</div>
+        </div>
+      </div>
+      <span class="chevron" id="accChevron">▼</span>
+    </div>
+
+    <!-- Accordion body -->
+    <div class="accordion-body" id="accBody">
+
+      <!-- Section 1: Salute DPF -->
+      <div class="acc-section">
+        <div class="acc-section-title" style="color:var(--ok)">
+          🏥 Migliorare la salute del filtro
+        </div>
+
+        <div class="acc-tip">
+          <div class="tip-icon ic-orange">🪨</div>
+          <div class="tip-body">
+            <div class="tip-title">Pianifica la pulizia dell'ash</div>
+            <div class="tip-desc">La cenere non si elimina con le rigenerazioni — si accumula per sempre. Quando l'ash supera il 50–60%, porta il filtro da un officina specializzata per la pulizia ad ultrasuoni o a soda caustica. Non aspettare l'80%.</div>
+            <span class="tip-badge tb-high">↑ +20 punti salute</span>
+          </div>
+        </div>
+
+        <div class="acc-tip">
+          <div class="tip-icon ic-green">🛣️</div>
+          <div class="tip-body">
+            <div class="tip-title">Fai percorsi autostradali regolari</div>
+            <div class="tip-desc">Almeno 20–30 minuti di autostrada a settimana a >80 km/h mantengono alta la temperatura dei gas di scarico e favoriscono le rigenerazioni passive. Riducono anche la frequenza delle regen attive, proteggendo l'olio.</div>
+            <span class="tip-badge tb-high">↑ +8 punti salute</span>
+          </div>
+        </div>
+
+        <div class="acc-tip">
+          <div class="tip-icon ic-blue">🔧</div>
+          <div class="tip-body">
+            <div class="tip-title">Usa olio certificato per DPF (Low SAPS)</div>
+            <div class="tip-desc">L'olio ad alto contenuto di cenere (non Low SAPS) produce residui che intasano il DPF anche dopo le regen. Usa solo olio con specifica Ford WSS-M2C934-B o equivalente ACEA C3/C4.</div>
+            <span class="tip-badge tb-medium">↑ +5 punti salute nel lungo periodo</span>
+          </div>
+        </div>
+
+        <div class="acc-tip">
+          <div class="tip-icon ic-purple">🩺</div>
+          <div class="tip-body">
+            <div class="tip-title">Controlla la valvola EGR</div>
+            <div class="tip-desc">Una valvola EGR parzialmente bloccata aperta aumenta la produzione di soot, riducendo l'intervallo tra le regen. Se le regen diventano più frequenti di 300–400 km, fai controllare EGR e iniettori.</div>
+            <span class="tip-badge tb-info">Diagnosi consigliata</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Guida -->
+      <div class="acc-section">
+        <div class="acc-section-title" style="color:var(--accent)">
+          🏎️ Migliorare il punteggio di guida
+        </div>
+
+        <div class="acc-tip">
+          <div class="tip-icon ic-red">🚫</div>
+          <div class="tip-body">
+            <div class="tip-title">Non spegnere il motore durante la regen attiva</div>
+            <div class="tip-desc">Quando l'app avvisa "Rigenerazione attiva 🔥", la centralina sta iniettando gasolio extra per bruciare il soot. Spegnere il motore in questo momento lascia il gasolio nell'olio motore senza bruciarlo — diluisce l'olio e può portare a danni al motore.</div>
+            <span class="tip-badge tb-high">+15 punti per ogni regen completata</span>
+          </div>
+        </div>
+
+        <div class="acc-tip">
+          <div class="tip-icon ic-orange">🌡️</div>
+          <div class="tip-body">
+            <div class="tip-title">Aspetta che il motore sia caldo prima di partire</div>
+            <div class="tip-desc">Il motore deve essere sopra gli 85°C di coolant prima di tratti autostradali intensi. Le regen che iniziano con il motore freddo (&lt;80°C) non raggiungono le temperature ottimali e si interrompono senza completarsi, sprecando carburante e stressando il filtro.</div>
+            <span class="tip-badge tb-medium">+8 punti per ogni regen con motore caldo</span>
+          </div>
+        </div>
+
+        <div class="acc-tip">
+          <div class="tip-icon ic-green">✅</div>
+          <div class="tip-body">
+            <div class="tip-title">Completa le regen in autostrada</div>
+            <div class="tip-desc">Se l'app avvisa una regen in corso, evita di uscire dall'autostrada per almeno 15–20 minuti. Le regen attive durano in media 18 minuti — completarle integralmente riduce il soot al minimo e protegge il filtro.</div>
+            <span class="tip-badge tb-high">+10 punti punteggio guida</span>
+          </div>
+        </div>
+
+        <div class="acc-tip">
+          <div class="tip-icon ic-blue">📅</div>
+          <div class="tip-body">
+            <div class="tip-title">Anticipate il cambio olio se hai regen interrotte</div>
+            <div class="tip-desc">Ogni regen attiva interrotta aggiunge gasolio all'olio motore. Se hai 2 o più regen interrotte dall'ultimo tagliando, considera di anticipare il cambio olio anche se non hai raggiunto il km previsto.</div>
+            <span class="tip-badge tb-info">Salute motore</span>
+          </div>
+        </div>
+
+      </div>
+    </div><!-- /accordion-body -->
+
+  </div>
+
+  <!-- ══ STATS ══ -->
+  <div class="stats-bar">
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--accent)">47</div>
+      <div class="stat-label">Tot. regen</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--ok)">38</div>
+      <div class="stat-label">Attive</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-val" style="color:var(--purple)">8</div>
+      <div class="stat-label">Passive</div>
+    </div>
+  </div>
+
+  <!-- Export -->
+  <div class="export-area">
+    <button class="btn-export">📄 &nbsp;Esporta report per meccanico</button>
+  </div>
+
+  <!-- ══ SESSION LIST ══ -->
+  <div class="section-label">Rigenerazioni recenti</div>
+
+  <!-- #47 — ACTIVE, completed -->
+  <div class="session-card">
+    <div class="session-head">
+      <div class="session-head-left">
+        <div class="session-num num-ok">#47</div>
+        <div>
+          <div class="session-date">24 apr 2026 · 14:32</div>
+          <div class="session-meta">📍 154.022 km · 18 min</div>
+        </div>
+      </div>
+      <div class="badges-row">
+        <div class="badge badge-danger">🔥 Attiva</div>
+        <div class="badge badge-ok">✓ Completa</div>
+      </div>
+    </div>
+
+    <!-- Regen type explanation -->
+    <div class="regen-type-row">
+      <div class="regen-type-icon" style="background:rgba(255,59,48,0.12)">🔥</div>
+      <div class="regen-type-text">
+        <b>Rigenerazione attiva</b> — ECU ha attivato la post-injection per forzare la combustione del soot. EGT &gt;550°C confermata. <b>L'olio motore subisce una leggera diluizione da questo tipo di regen.</b>
+      </div>
+    </div>
+
+    <div class="session-grid">
+      <div class="session-cell">
+        <div class="cell-label">Soot</div>
+        <div class="cell-val soot-change">
+          <span style="color:var(--warn)">14%</span>
+          <span class="soot-arrow ok">→</span>
+          <span style="color:var(--ok)">2%</span>
+        </div>
+        <div class="cell-sub">−12 punti</div>
+      </div>
+      <div class="session-cell">
+        <div class="cell-label">EGT Picco</div>
+        <div class="cell-val" style="color:var(--warn)">612 °C</div>
+        <div class="cell-sub">media 487 °C</div>
+      </div>
+      <div class="session-cell">
+        <div class="cell-label">Delta P inizio→fine</div>
+        <div class="cell-val">0.8 → 0.1 kPa</div>
+        <div class="cell-sub" style="color:var(--ok)">filtro pulito ✓</div>
+      </div>
+      <div class="session-cell">
+        <div class="cell-label">Coolant inizio</div>
+        <div class="cell-val">91 °C</div>
+        <div class="cell-sub" style="color:var(--ok)">motore caldo ✓</div>
+      </div>
+    </div>
+    <div class="session-chart">
+      <div class="chart-label">EGT</div>
+      <div class="sparkline">
+        <div class="spark-bar" style="height:20%;background:var(--ok)"></div>
+        <div class="spark-bar" style="height:38%;background:var(--ok)"></div>
+        <div class="spark-bar" style="height:58%;background:var(--warn)"></div>
+        <div class="spark-bar" style="height:76%;background:var(--warn)"></div>
+        <div class="spark-bar" style="height:92%;background:var(--warn)"></div>
+        <div class="spark-bar" style="height:100%;background:var(--danger)"></div>
+        <div class="spark-bar" style="height:96%;background:var(--danger)"></div>
+        <div class="spark-bar" style="height:85%;background:var(--warn)"></div>
+        <div class="spark-bar" style="height:70%;background:var(--warn)"></div>
+        <div class="spark-bar" style="height:50%;background:var(--ok)"></div>
+        <div class="spark-bar" style="height:30%;background:var(--ok)"></div>
+        <div class="spark-bar" style="height:15%;background:var(--ok)"></div>
+      </div>
+      <div class="chart-note">612°C</div>
+    </div>
+  </div>
+
+  <!-- #46 — PASSIVE, completed -->
+  <div class="session-card">
+    <div class="session-head">
+      <div class="session-head-left">
+        <div class="session-num num-ok">#46</div>
+        <div>
+          <div class="session-date">18 apr 2026 · 09:15</div>
+          <div class="session-meta">📍 153.611 km · 8 min</div>
+        </div>
+      </div>
+      <div class="badges-row">
+        <div class="badge badge-purple">🌬️ Passiva</div>
+        <div class="badge badge-ok">✓ Completa</div>
+      </div>
+    </div>
+
+    <div class="regen-type-row">
+      <div class="regen-type-icon" style="background:rgba(191,90,242,0.12)">🌬️</div>
+      <div class="regen-type-text">
+        <b>Rigenerazione passiva</b> — EGT alta per guida autostradale, soot bruciato naturalmente. <b>Nessuna post-injection, olio motore non coinvolto.</b> Questo è il tipo di regen migliore.
+      </div>
+    </div>
+
+    <div class="session-grid">
+      <div class="session-cell">
+        <div class="cell-label">Soot</div>
+        <div class="cell-val soot-change">
+          <span style="color:var(--ok)">8%</span>
+          <span class="soot-arrow ok">→</span>
+          <span style="color:var(--ok)">4%</span>
+        </div>
+        <div class="cell-sub">−4 punti (parziale)</div>
+      </div>
+      <div class="session-cell">
+        <div class="cell-label">EGT Picco</div>
+        <div class="cell-val" style="color:var(--ok)">468 °C</div>
+        <div class="cell-sub">mai superato 550°C</div>
+      </div>
+      <div class="session-cell">
+        <div class="cell-label">Delta P inizio→fine</div>
+        <div class="cell-val">0.4 → 0.2 kPa</div>
+        <div class="cell-sub">riduzione parziale</div>
+      </div>
+      <div class="session-cell">
+        <div class="cell-label">Coolant inizio</div>
+        <div class="cell-val">94 °C</div>
+        <div class="cell-sub" style="color:var(--ok)">motore caldo ✓</div>
+      </div>
+    </div>
+    <div class="session-chart">
+      <div class="chart-label">EGT</div>
+      <div class="sparkline">
+        <div class="spark-bar" style="height:30%;background:var(--ok)"></div>
+        <div class="spark-bar" style="height:55%;background:var(--ok)"></div>
+        <div class="spark-bar" style="height:72%;background:var(--ok)"></div>
+        <div class="spark-bar" style="height:80%;background:var(--warn)"></div>
+        <div class="spark-bar" style="height:78%;background:var(--warn)"></div>
+        <div class="spark-bar" style="height:70%;background:var(--ok)"></div>
+        <div class="spark-bar" style="height:58%;background:var(--ok)"></div>
+        <div class="spark-bar" style="height:42%;background:var(--ok)"></div>
+      </div>
+      <div class="chart-note">468°C</div>
+    </div>
+  </div>
+
+  <!-- #45 — ACTIVE, interrupted -->
+  <div class="session-card interrupted">
+    <div class="session-head">
+      <div class="session-head-left">
+        <div class="session-num num-warn">#45</div>
+        <div>
+          <div class="session-date">11 apr 2026 · 18:44</div>
+          <div class="session-meta">📍 153.188 km · 6 min</div>
+        </div>
+      </div>
+      <div class="badges-row">
+        <div class="badge badge-danger">🔥 Attiva</div>
+        <div class="badge badge-warn">⚠ Interrotta</div>
+      </div>
+    </div>
+
+    <div class="session-grid">
+      <div class="session-cell">
+        <div class="cell-label">Soot</div>
+        <div class="cell-val soot-change">
+          <span style="color:var(--warn)">22%</span>
+          <span class="soot-arrow" style="color:var(--danger)">→</span>
+          <span style="color:var(--danger)">21%</span>
+        </div>
+        <div class="cell-sub">soot non ridotto</div>
+      </div>
+      <div class="session-cell">
+        <div class="cell-label">EGT Picco</div>
+        <div class="cell-val" style="color:var(--ok)">498 °C</div>
+        <div class="cell-sub">in riscaldamento</div>
+      </div>
+      <div class="session-cell">
+        <div class="cell-label">Coolant inizio</div>
+        <div class="cell-val" style="color:var(--warn)">64 °C</div>
+        <div class="cell-sub">⚠ motore freddo</div>
+      </div>
+      <div class="session-cell">
+        <div class="cell-label">Olio a rischio</div>
+        <div class="cell-val" style="color:var(--danger)">Sì</div>
+        <div class="cell-sub">post-inj. iniziata</div>
+      </div>
+    </div>
+    <div class="warn-note">
+      ⚠️ <b>Regen attiva interrotta</b> — la post-injection era già attiva quando il motore è stato spento. Il gasolio iniettato non è bruciato e ha diluito l'olio motore. <b>Controlla il livello olio e valuta un cambio anticipato.</b>
+    </div>
+  </div>
+
+  <!-- #44 — ACTIVE, completed -->
+  <div class="session-card">
+    <div class="session-head">
+      <div class="session-head-left">
+        <div class="session-num num-ok">#44</div>
+        <div>
+          <div class="session-date">02 apr 2026 · 11:20</div>
+          <div class="session-meta">📍 152.701 km · 15 min</div>
+        </div>
+      </div>
+      <div class="badges-row">
+        <div class="badge badge-danger">🔥 Attiva</div>
+        <div class="badge badge-ok">✓ Completa</div>
+      </div>
+    </div>
+    <div class="session-grid">
+      <div class="session-cell">
+        <div class="cell-label">Soot</div>
+        <div class="cell-val soot-change">
+          <span style="color:var(--ok)">19%</span>
+          <span class="soot-arrow ok">→</span>
+          <span style="color:var(--ok)">4%</span>
+        </div>
+        <div class="cell-sub">−15 punti</div>
+      </div>
+      <div class="session-cell">
+        <div class="cell-label">EGT Picco</div>
+        <div class="cell-val" style="color:var(--warn)">601 °C</div>
+        <div class="cell-sub">media 475 °C</div>
+      </div>
+      <div class="session-cell">
+        <div class="cell-label">Delta P inizio→fine</div>
+        <div class="cell-val">1.0 → 0.1 kPa</div>
+        <div class="cell-sub" style="color:var(--ok)">filtro pulito ✓</div>
+      </div>
+      <div class="session-cell">
+        <div class="cell-label">Coolant inizio</div>
+        <div class="cell-val">94 °C</div>
+        <div class="cell-sub" style="color:var(--ok)">motore caldo ✓</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

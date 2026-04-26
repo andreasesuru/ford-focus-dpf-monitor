@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DPF Monitor — Figma Preview</title>
+<style>
+:root {
+  --bg:       #0E0E1A;
+  --surface:  #1A1A2C;
+  --surface2: #22223A;
+  --border:   #2C2C48;
+  --text:     #FFFFFF;
+  --sub:      #B0B0CC;
+  --muted:    #66668A;
+  --hint:     #44445A;
+  --accent:   #4F9BFF;
+  --ok:       #32D74B;
+  --warn:     #FF9F0A;
+  --danger:   #FF453A;
+  --ok-bg:    rgba(50,215,75,.14);
+  --warn-bg:  rgba(255,159,10,.14);
+  --danger-bg:rgba(255,69,58,.14);
+  --blue-bg:  rgba(79,155,255,.10);
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+
+body {
+  background: #080812;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 40px;
+  font-family: -apple-system,'Roboto','Segoe UI',sans-serif;
+  gap: 16px;
+}
+
+/* ── Tab selector (outside phone) ──────────────────────────────── */
+.tab-selector {
+  display: flex; gap: 8px;
+  background: #1A1A2C;
+  border-radius: 12px;
+  padding: 5px;
+  border: 1px solid #2C2C48;
+}
+.tab-btn {
+  padding: 7px 18px; border-radius: 8px; border: none; cursor: pointer;
+  font-size: 12px; font-weight: 700; letter-spacing: .04em;
+  background: transparent; color: #66668A; transition: all .15s;
+}
+.tab-btn.active { background: #4F9BFF; color: #fff; }
+
+/* ── Phone frame ────────────────────────────────────────────────── */
+.phone {
+  width: 390px;
+  background: var(--bg);
+  border-radius: 40px;
+  overflow: hidden;
+  box-shadow: 0 0 0 2px #2A2A40, 0 30px 80px rgba(0,0,0,.9);
+  position: relative;
+}
+
+/* ── Status bar ─────────────────────────────────────────────────── */
+.status-bar {
+  height: 44px;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+  font-size: 12px; font-weight: 600; color: var(--text);
+}
+.status-right { display: flex; gap: 6px; align-items: center; font-size: 11px; }
+
+/* ── App bar ────────────────────────────────────────────────────── */
+.app-bar {
+  background: var(--bg);
+  height: 52px;
+  display: flex; align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.app-bar-back { font-size: 20px; color: var(--text); }
+.app-bar-title {
+  flex: 1;
+  font-size: 18px; font-weight: 700; letter-spacing: .06em; color: var(--text);
+}
+.app-bar-icon { font-size: 18px; color: var(--sub); cursor: pointer; }
+
+/* ── Screen container ───────────────────────────────────────────── */
+.screen {
+  display: none;
+  height: 720px;
+  overflow-y: auto;
+  padding: 14px 14px 80px;
+  gap: 10px;
+  flex-direction: column;
+  scrollbar-width: none;
+}
+.screen.active { display: flex; }
+.screen::-webkit-scrollbar { display: none; }
+
+/* ── Generic card ───────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 14px;
+}
+
+/* ── Section label ──────────────────────────────────────────────── */
+.section-label {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  margin-bottom: 2px;
+}
+.section-sub {
+  font-size: 10px; color: var(--muted); margin-bottom: 8px;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MONITOR
+══════════════════════════════════════════════════════════════════ */
+
+/* Connection card */
+.conn-card {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px;
+}
+.conn-left .conn-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.conn-left .conn-device { font-size: 12px; color: var(--sub); margin-top: 1px; }
+.conn-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.conn-status { font-size: 12px; font-weight: 700; }
+.conn-status.ok { color: var(--ok); }
+.conn-status.off { color: var(--muted); }
+.conn-icon { font-size: 18px; color: var(--ok); }
+.conn-btns { display: flex; gap: 8px; margin-top: 10px; }
+.btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+  font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--sub); }
+.btn-danger  { background: var(--danger-bg); border: 1px solid rgba(255,69,58,.3); color: var(--danger); }
+
+/* DPF main card */
+.dpf-main { padding: 14px; }
+.dpf-top { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.gauges-wrap { display: flex; gap: 12px; }
+.gauge-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.gauge-label { font-size: 9px; font-weight: 700; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+
+.gauge-svg { position: relative; }
+.gauge-svg svg { display: block; }
+.gauge-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.gauge-val { font-size: 18px; font-weight: 800; color: var(--text); line-height: 1; }
+.gauge-unit { font-size: 9px; color: var(--muted); }
+
+.dpf-right { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.dpf-deltap-label { font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.dpf-deltap-val { font-size: 22px; font-weight: 800; color: var(--warn); line-height: 1; }
+.dpf-deltap-unit { font-size: 11px; color: var(--warn); }
+.dpf-load-label { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+.dpf-chips { display: flex; gap: 8px; }
+.chip {
+  flex: 1; border-radius: 10px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.chip.ok   { background: var(--ok-bg); border: 1px solid rgba(50,215,75,.2); }
+.chip.danger { background: var(--danger-bg); border: 1px solid rgba(255,69,58,.2); }
+.chip-title { font-size: 13px; font-weight: 700; }
+.chip.ok .chip-title   { color: var(--ok); }
+.chip.danger .chip-title { color: var(--danger); }
+.chip-sub { font-size: 10px; color: var(--sub); }
+
+/* Bottom two columns */
+.two-col { display: flex; gap: 10px; }
+.two-col .card { flex: 1; }
+
+.temp-val { font-size: 28px; font-weight: 800; color: var(--warn); line-height: 1; }
+.temp-label { font-size: 11px; color: var(--sub); margin-bottom: 10px; margin-top: 2px; }
+.temp-val2 { font-size: 24px; font-weight: 800; color: var(--warn); line-height: 1; }
+
+.dist-row { display: flex; flex-direction: column; gap: 8px; }
+.dist-item .dist-val { font-size: 20px; font-weight: 800; color: var(--text); line-height: 1; }
+.dist-item .dist-unit { font-size: 12px; font-weight: 400; color: var(--sub); }
+.dist-item .dist-label { font-size: 10px; color: var(--muted); }
+.dist-item .dist-val.small { font-size: 14px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   DIAGNOSTICA — grid cells
+══════════════════════════════════════════════════════════════════ */
+.diag-section { margin-bottom: 4px; }
+.diag-title {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  margin-bottom: 8px;
+}
+.cell-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cell-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+.cell {
+  background: var(--surface2);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 12px 12px 10px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.cell.dimmed { opacity: .55; }
+.cell-header { display: flex; align-items: center; justify-content: space-between; }
+.cell-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.cell-icon  { font-size: 12px; color: var(--muted); }
+.cell-val   { font-size: 24px; font-weight: 800; color: var(--accent); line-height: 1.1; }
+.cell-val.sm { font-size: 18px; }
+.cell-unit  { font-size: 11px; color: var(--accent); vertical-align: super; font-weight: 600; }
+.cell-pid   { font-size: 9px; color: var(--hint); margin-top: 4px; }
+.cell-note  { font-size: 9px; color: var(--warn); margin-top: 2px; }
+
+.cell-val.ok     { color: var(--ok); }
+.cell-val.warn   { color: var(--warn); }
+.cell-val.danger { color: var(--danger); }
+.cell-unit.ok    { color: var(--ok); }
+.cell-unit.warn  { color: var(--warn); }
+
+/* wide cell spans 2 cols */
+.cell.wide { grid-column: span 2; flex-direction: row; align-items: center; gap: 14px; }
+.cell.wide .cell-main { flex: 1; }
+
+/* ══════════════════════════════════════════════════════════════════
+   STORICO
+══════════════════════════════════════════════════════════════════ */
+.period-banner {
+  background: var(--blue-bg);
+  border: 1px solid rgba(79,155,255,.2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px; color: var(--text); line-height: 1.5;
+  text-align: center;
+}
+.period-banner strong { color: var(--accent); }
+
+.eval-card { padding: 14px; }
+.eval-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.eval-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.eval-badge { font-size: 12px; font-weight: 800; color: var(--ok); letter-spacing: .06em; }
+.eval-row { display: flex; justify-content: space-between; align-items: baseline;
+  padding: 6px 0; border-top: 1px solid var(--border); }
+.eval-row-label { font-size: 13px; color: var(--sub); }
+.eval-row-val   { font-size: 13px; font-weight: 700; color: var(--text); }
+
+.regen-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.regen-card { padding: 14px; margin-bottom: 10px; }
+.regen-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.regen-date { font-size: 13px; font-weight: 600; color: var(--text); }
+.regen-badge {
+  font-size: 10px; font-weight: 800; letter-spacing: .06em;
+  padding: 3px 10px; border-radius: 6px;
+}
+.regen-badge.attiva   { background: var(--danger); color: #fff; }
+.regen-badge.passiva  { background: var(--surface2); color: var(--sub); border: 1px solid var(--border); }
+.regen-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.regen-cell-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+.regen-cell-val   { font-size: 20px; font-weight: 800; color: var(--accent); }
+.regen-cell-val.sm { font-size: 13px; color: var(--sub); font-weight: 600; }
+
+/* ── Bottom nav bar ─────────────────────────────────────────────── */
+.bottom-nav {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-around;
+  font-size: 22px;
+}
+.nav-item { opacity: .4; cursor: pointer; transition: opacity .15s; }
+.nav-item.active { opacity: 1; }
+
+/* scrollbar reset for phone */
+.phone { position: relative; }
+</style>
+</head>
+<body>
+
+<!-- ── Screen selector ──────────────────────────────────────────── -->
+<div class="tab-selector">
+  <button class="tab-btn active" onclick="showTab('monitor',this)">📊 Monitor</button>
+  <button class="tab-btn" onclick="showTab('diagnostica',this)">📡 Diagnostica</button>
+  <button class="tab-btn" onclick="showTab('storico',this)">📋 Storico</button>
+</div>
+
+<!-- ── Phone ─────────────────────────────────────────────────────── -->
+<div class="phone">
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span>9:41</span>
+    <div class="status-right">
+      <span>▲▼</span><span>📶</span><span>🔋</span>
+    </div>
+  </div>
+
+  <!-- App bar (title changes with tab) -->
+  <div class="app-bar">
+    <span class="app-bar-back">←</span>
+    <span class="app-bar-title" id="appBarTitle">MONITOR</span>
+    <span class="app-bar-icon">⚙</span>
+    <span class="app-bar-icon">⋮</span>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       SCREEN 1 — MONITOR
+  ══════════════════════════════════════════════════════════════════ -->
+  <div class="screen active" id="screen-monitor">
+
+    <!-- Connection card -->
+    <div class="card" style="padding:0">
+      <div class="conn-card">
+        <div class="conn-left">
+          <div class="conn-title">Connessione</div>
+          <div class="conn-device">Android-Vlink</div>
+        </div>
+        <div class="conn-right">
+          <span class="conn-icon">📶</span>
+          <span class="conn-status ok">Connesso</span>
+        </div>
+      </div>
+      <div class="conn-btns" style="padding:0 14px 14px">
+        <button class="btn btn-outline">SCANSIONE</button>
+        <button class="btn btn-danger">Disconnetti</button>
+      </div>
+    </div>
+
+    <!-- DPF main card -->
+    <div class="card dpf-main">
+      <div class="section-label">DPF — VALORI PRINCIPALI</div>
+      <div class="section-sub">PID 22057B · 220579 · 017A</div>
+
+      <div class="dpf-top">
+        <!-- Circular gauges -->
+        <div class="gauges-wrap">
+          <!-- Soot gauge -->
+          <div class="gauge-item">
+            <div class="gauge-svg" style="width:80px;height:80px">
+              <svg width="80" height="80" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="#2C2C48" stroke-width="7"/>
+                <circle cx="40" cy="40" r="32" fill="none" stroke="#32D74B" stroke-width="7"
+                  stroke-dasharray="72.4 128.7" stroke-dashoffset="50.3"
+                  stroke-linecap="round" transform="rotate(-90 40 40)"/>
+              </svg>
+              <div class="gauge-center">
+                <span class="gauge-val">36</span>
+                <span class="gauge-unit">%</span>
+              </div>
+            </div>
+            <span class="gauge-label">Soot</span>
+          </div>
+          <!-- Load gauge -->
+          <div class="gauge-item">
+            <div class="gauge-svg" style="width:80px;height:80px">
+              <svg width="80" height="80" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="32" fill="none" stroke="#2C2C48" stroke-width="7"/>
+                <circle cx="40" cy="40" r="32" fill="none" stroke="#FF9F0A" stroke-width="7"
+                  stroke-dasharray="90.5 110.6" stroke-dashoffset="50.3"
+                  stroke-linecap="round" transform="rotate(-90 40 40)"/>
+              </svg>
+              <div class="gauge-center">
+                <span class="gauge-val">45</span>
+                <span class="gauge-unit">%</span>
+              </div>
+            </div>
+            <span class="gauge-label">Load</span>
+          </div>
+        </div>
+
+        <!-- Delta P -->
+        <div class="dpf-right">
+          <div class="dpf-deltap-label">Delta P</div>
+          <div>
+            <span class="dpf-deltap-val">8.1</span>
+            <span class="dpf-deltap-unit"> kPa</span>
+          </div>
+          <div class="dpf-load-label">Load %</div>
+        </div>
+      </div>
+
+      <!-- Status chips -->
+      <div class="dpf-chips">
+        <div class="chip ok">
+          <span class="chip-title">Soot %</span>
+          <span class="chip-sub">OK · 36%</span>
+        </div>
+        <div class="chip danger">
+          <span class="chip-title">REGEN ATTIVA</span>
+          <span class="chip-sub">Motore spegnibile</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Temperature + Distanze -->
+    <div class="two-col">
+      <!-- Temperature -->
+      <div class="card">
+        <div class="section-label" style="margin-bottom:10px">Temperature 🌡</div>
+        <div class="temp-val">310°</div>
+        <div class="temp-label">EGT</div>
+        <div class="temp-val2">88°</div>
+        <div class="temp-label" style="margin-bottom:0">Refrigerante</div>
+      </div>
+      <!-- Distanze ECU -->
+      <div class="card">
+        <div class="section-label" style="margin-bottom:10px">Distanze ECU</div>
+        <div class="dist-row">
+          <div class="dist-item">
+            <div><span class="dist-val">215</span> <span class="dist-unit">km</span></div>
+            <div class="dist-label">last regen</div>
+          </div>
+          <div class="dist-item">
+            <div><span class="dist-val">7.150</span> <span class="dist-unit">km</span></div>
+            <div class="dist-label">oil change</div>
+          </div>
+          <div class="dist-item">
+            <div><span class="dist-val small">142.600</span> <span class="dist-unit">km</span></div>
+            <div class="dist-label">total odometer</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /screen-monitor -->
+
+
+  <!-- ══════════════════════════════════════════════════════════════
+       SCREEN 2 — DIAGNOSTICA
+  ══════════════════════════════════════════════════════════════════ -->
+  <div class="screen" id="screen-diagnostica">
+
+    <!-- DPF Avanzato -->
+    <div class="diag-section">
+      <div class="diag-title">DPF Avanzato</div>
+      <div class="cell-grid-2">
+        <div class="cell">
+          <div class="cell-header">
+            <span class="cell-label">Soot %</span>
+          </div>
+          <div><span class="cell-val">36</span><span class="cell-unit">%</span></div>
+          <div class="cell-pid">22.067B</div>
+        </div>
+        <div class="cell">
+          <div class="cell-header">
+            <span class="cell-label">Delta P</span>
+            <span class="cell-icon">kPa</span>
+          </div>
+          <div><span class="cell-val">8.1</span><span class="cell-unit"> kPa</span></div>
+          <div class="cell-pid">01.7AE</div>
+        </div>
+        <div class="cell wide">
+          <div class="cell-main">
+            <div class="cell-header">
+              <span class="cell-label">EGT Ingresso</span>
+            </div>
+            <div><span class="cell-val" style="font-size:32px">310</span><span class="cell-unit" style="font-size:16px">°C</span></div>
+            <div class="cell-pid">01 78 S1</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <span class="cell-label">EGT Uscita</span>
+            <div><span class="cell-val sm">285</span><span class="cell-unit">°C</span></div>
+            <span class="cell-label" style="color:#4F9BFF">ΔT +25°C</span>
+            <div class="cell-pid">01 78 S2</div>
+          </div>
+        </div>
+        <div class="cell">
+          <div class="cell-header"><span class="cell-label">Load %</span></div>
+          <div><span class="cell-val warn">45</span><span class="cell-unit warn">%</span></div>
+          <div class="cell-pid">22.0579</div>
+        </div>
+        <div class="cell">
+          <div class="cell-header"><span class="cell-label">Ash Level</span></div>
+          <div><span class="cell-val ok">12</span><span class="cell-unit ok">%</span></div>
+          <div class="cell-pid">22.0578</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Motore Live -->
+    <div class="diag-section">
+      <div class="diag-title">Motore Live</div>
+      <div class="cell-grid-3">
+        <div class="cell">
+          <div class="cell-header"><span class="cell-label">Boost</span><span class="cell-icon">💨</span></div>
+          <div><span class="cell-val sm">1.3</span><span class="cell-unit"> bar</span></div>
+          <div class="cell-pid">21 0C</div>
+        </div>
+        <div class="cell">
+          <div class="cell-header"><span class="cell-label">Velocità</span><span class="cell-icon">🏎</span></div>
+          <div><span class="cell-val sm">105</span><span class="cell-unit"> km/h</span></div>
+          <div class="cell-pid">01 0D</div>
+        </div>
+        <div class="cell">
+          <div class="cell-header"><span class="cell-label">RPM</span><span class="cell-icon">⚙</span></div>
+          <div><span class="cell-val sm">1950</span></div>
+          <div class="cell-pid">01 0B</div>
+        </div>
+        <div class="cell">
+          <div class="cell-header"><span class="cell-label">Refrigerante</span></div>
+          <div><span class="cell-val ok sm">88</span><span class="cell-unit ok">°C</span></div>
+          <div class="cell-pid">01 05</div>
+        </div>
+        <div class="cell">
+          <div class="cell-header"><span class="cell-label">Olio</span></div>
+          <div><span class="cell-val ok sm">95</span><span class="cell-unit ok">°C</span></div>
+          <div class="cell-pid">01 5C</div>
+        </div>
+        <div class="cell">
+          <div class="cell-header"><span class="cell-label">Eng. Load</span></div>
+          <div><span class="cell-val sm">68</span><span class="cell-unit">%</span></div>
+          <div class="cell-pid">01 04</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Distanze -->
+    <div class="diag-section">
+      <div class="diag-title">Distanze</div>
+      <div class="cell-grid-2">
+        <div class="cell">
+          <div class="cell-header"><span class="cell-label">Km last regen</span><span class="cell-icon">🔧</span></div>
+          <div><span class="cell-val ok">215</span><span class="cell-unit ok"> km</span></div>
+          <div class="cell-pid">22.050B</div>
+        </div>
+        <div class="cell">
+          <div class="cell-header"><span class="cell-label">Odometro</span><span class="cell-icon">↔</span></div>
+          <div><span class="cell-val sm" style="font-size:16px">142.600</span><span class="cell-unit"> km</span></div>
+          <div class="cell-pid">22.DD01P</div>
+        </div>
+        <div class="cell">
+          <div class="cell-header"><span class="cell-label">Km cambio olio</span></div>
+          <div><span class="cell-val ok">7.150</span><span class="cell-unit ok"> km</span></div>
+          <div class="cell-pid">22.0542</div>
+        </div>
+        <div class="cell">
+          <div class="cell-header"><span class="cell-label">Pressione Baro</span></div>
+          <div><span class="cell-val sm">101</span><span class="cell-unit"> kPa</span></div>
+          <div class="cell-pid">01 33</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- In attesa conferma -->
+    <div class="diag-section">
+      <div class="diag-title" style="color:var(--muted)">In attesa conferma</div>
+      <div class="cell-grid-2">
+        <div class="cell dimmed">
+          <div class="cell-header"><span class="cell-label">Ash level</span><span style="font-size:9px;color:var(--muted)">···</span></div>
+          <div><span class="cell-val">14</span><span class="cell-unit">%</span></div>
+          <div class="cell-note">da confermare</div>
+          <div class="cell-pid">22.0578</div>
+        </div>
+        <div class="cell dimmed">
+          <div class="cell-header"><span class="cell-label">EGR rate</span><span style="font-size:9px;color:var(--muted)">···</span></div>
+          <div><span class="cell-val">25</span><span class="cell-unit">%</span></div>
+          <div class="cell-note">da confermare</div>
+          <div class="cell-pid">22.0555</div>
+        </div>
+        <div class="cell dimmed">
+          <div class="cell-header"><span class="cell-label">Tot. Regen</span></div>
+          <div><span class="cell-val">—</span></div>
+          <div class="cell-pid">22.05xx</div>
+        </div>
+        <div class="cell dimmed">
+          <div class="cell-header"><span class="cell-label">Fuel in oil</span></div>
+          <div><span class="cell-val">—</span></div>
+          <div class="cell-pid">22.05xx</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /screen-diagnostica -->
+
+
+  <!-- ══════════════════════════════════════════════════════════════
+       SCREEN 3 — STORICO
+  ══════════════════════════════════════════════════════════════════ -->
+  <div class="screen" id="screen-storico">
+
+    <!-- Period banner -->
+    <div class="period-banner">
+      Dati raccolti dal <strong>3 gen 2026</strong> ·
+      oggi <strong>26 apr 2026</strong> · <strong>113 giorni</strong>
+    </div>
+
+    <!-- Valutazione DPF -->
+    <div class="card eval-card">
+      <div class="eval-header">
+        <span class="eval-title">Valutazione DPF</span>
+        <span class="eval-badge">BUONO</span>
+      </div>
+      <div class="eval-row">
+        <span class="eval-row-label">Ultima regen:</span>
+        <span class="eval-row-val">215 km fa</span>
+      </div>
+      <div class="eval-row">
+        <span class="eval-row-label">Media cicli:</span>
+        <span class="eval-row-val">ogni ~510 km</span>
+      </div>
+      <div class="eval-row">
+        <span class="eval-row-label">Cambio olio:</span>
+        <span class="eval-row-val">7.150 km fa</span>
+      </div>
+    </div>
+
+    <!-- Lista rigenerazioni -->
+    <div class="regen-title">Lista rigenerazioni</div>
+
+    <!-- Regen 1 — ATTIVA -->
+    <div class="card regen-card">
+      <div class="regen-header">
+        <span class="regen-date">12 apr 2026 · 14:32</span>
+        <span class="regen-badge attiva">ATTIVA</span>
+      </div>
+      <div class="regen-grid">
+        <div>
+          <div class="regen-cell-label">Durata</div>
+          <div class="regen-cell-val">18 min</div>
+        </div>
+        <div>
+          <div class="regen-cell-label">EGT max</div>
+          <div class="regen-cell-val">612°C</div>
+        </div>
+        <div>
+          <div class="regen-cell-label">Km percorsi</div>
+          <div class="regen-cell-val">215 km fa</div>
+        </div>
+        <div>
+          <div class="regen-cell-label">Fonte</div>
+          <div class="regen-cell-val sm">ECU flag</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Regen 2 — PASSIVA -->
+    <div class="card regen-card">
+      <div class="regen-header">
+        <span class="regen-date">28 mar 2026 · 09:14</span>
+        <span class="regen-badge passiva">PASSIVA</span>
+      </div>
+      <div class="regen-grid">
+        <div>
+          <div class="regen-cell-label">Durata</div>
+          <div class="regen-cell-val">24 min</div>
+        </div>
+        <div>
+          <div class="regen-cell-label">EGT max</div>
+          <div class="regen-cell-val">487°C</div>
+        </div>
+        <div>
+          <div class="regen-cell-label">Km percorsi</div>
+          <div class="regen-cell-val">626 km fa</div>
+        </div>
+        <div>
+          <div class="regen-cell-label">Fonte</div>
+          <div class="regen-cell-val sm">EGT fallback</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Regen 3 — ATTIVA -->
+    <div class="card regen-card">
+      <div class="regen-header">
+        <span class="regen-date">8 mar 2026 · 17:55</span>
+        <span class="regen-badge attiva">ATTIVA</span>
+      </div>
+      <div class="regen-grid">
+        <div>
+          <div class="regen-cell-label">Durata</div>
+          <div class="regen-cell-val">21 min</div>
+        </div>
+        <div>
+          <div class="regen-cell-label">EGT max</div>
+          <div class="regen-cell-val">589°C</div>
+        </div>
+        <div>
+          <div class="regen-cell-label">Km percorsi</div>
+          <div class="regen-cell-val">1.136 km fa</div>
+        </div>
+        <div>
+          <div class="regen-cell-label">Fonte</div>
+          <div class="regen-cell-val sm">ECU flag</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /screen-storico -->
+
+  <!-- Bottom navigation -->
+  <div class="bottom-nav">
+    <span class="nav-item" id="nav-sq">■</span>
+    <span class="nav-item active" id="nav-home">⬤</span>
+    <span class="nav-item" id="nav-tri">◀</span>
+  </div>
+
+</div><!-- /phone -->
+
+<script>
+const titles = { monitor:'MONITOR', diagnostica:'DIAGNOSTICA', storico:'STORICO' };
+
+function showTab(id, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('appBarTitle').textContent = titles[id];
+}
+</script>
+</body>
+</html>

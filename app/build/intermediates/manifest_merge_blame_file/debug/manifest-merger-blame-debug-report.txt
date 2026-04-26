@@ -1,0 +1,380 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.example.fordfocusdpfscan"
+4    android:versionCode="13"
+5    android:versionName="2.2" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="34" />
+10
+11    <!--
+12    ═══════════════════════════════════════════════════════════════════════
+13         BLUETOOTH PERMISSIONS
+14         Android 12+ uses BLUETOOTH_SCAN / BLUETOOTH_CONNECT.
+15         Older APIs use BLUETOOTH / BLUETOOTH_ADMIN + ACCESS_FINE_LOCATION.
+16    ═══════════════════════════════════════════════════════════════════════════
+17    -->
+18    <uses-permission
+18-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:10:5-11:38
+19        android:name="android.permission.BLUETOOTH"
+19-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:10:22-65
+20        android:maxSdkVersion="30" />
+20-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:11:9-35
+21    <uses-permission
+21-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:12:5-13:38
+22        android:name="android.permission.BLUETOOTH_ADMIN"
+22-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:12:22-71
+23        android:maxSdkVersion="30" />
+23-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:13:9-35
+24    <uses-permission
+24-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:14:5-15:38
+25        android:name="android.permission.ACCESS_FINE_LOCATION"
+25-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:14:22-76
+26        android:maxSdkVersion="30" />
+26-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:15:9-35
+27
+28    <!-- API 31+ BLE permissions — neverForLocation: we connect by name, not GPS -->
+29    <uses-permission
+29-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:18:5-20:31
+30        android:name="android.permission.BLUETOOTH_SCAN"
+30-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:18:22-70
+31        android:usesPermissionFlags="neverForLocation" />
+31-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:19:9-55
+32    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+32-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:21:5-76
+32-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:21:22-73
+33
+34    <!--
+35    ═══════════════════════════════════════════════════════════════════════
+36         FOREGROUND SERVICE (keeps BLE alive in background)
+37    ═══════════════════════════════════════════════════════════════════════════
+38    -->
+39    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+39-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:26:5-77
+39-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:26:22-74
+40    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+40-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:27:5-94
+40-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:27:22-91
+41
+42    <!-- API 33+ — required to post notifications -->
+43    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+43-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:30:5-77
+43-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:30:22-74
+44
+45    <!-- BLE hardware feature — the app requires BLE to function -->
+46    <uses-feature
+46-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:33:5-90
+47        android:name="android.hardware.bluetooth_le"
+47-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:33:19-63
+48        android:required="true" />
+48-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:33:64-87
+49
+50    <queries>
+50-->[androidx.car.app:app:1.4.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\0193a0fa438a1df79cdb853a38e9888e\transformed\app-1.4.0\AndroidManifest.xml:23:5-28:15
+51        <provider
+51-->[androidx.car.app:app:1.4.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\0193a0fa438a1df79cdb853a38e9888e\transformed\app-1.4.0\AndroidManifest.xml:24:9-27:43
+52            android:name="androidx.car.app.connection.provider"
+52-->[androidx.car.app:app:1.4.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\0193a0fa438a1df79cdb853a38e9888e\transformed\app-1.4.0\AndroidManifest.xml:25:13-64
+53            android:authorities="androidx.car.app.connection" />
+53-->[androidx.car.app:app:1.4.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\0193a0fa438a1df79cdb853a38e9888e\transformed\app-1.4.0\AndroidManifest.xml:26:13-62
+54    </queries>
+55
+56    <permission
+56-->[androidx.core:core:1.13.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\eb4afd58f88e94a2e837dbf4364ee0ae\transformed\core-1.13.0\AndroidManifest.xml:22:5-24:47
+57        android:name="com.example.fordfocusdpfscan.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+57-->[androidx.core:core:1.13.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\eb4afd58f88e94a2e837dbf4364ee0ae\transformed\core-1.13.0\AndroidManifest.xml:23:9-81
+58        android:protectionLevel="signature" />
+58-->[androidx.core:core:1.13.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\eb4afd58f88e94a2e837dbf4364ee0ae\transformed\core-1.13.0\AndroidManifest.xml:24:9-44
+59
+60    <uses-permission android:name="com.example.fordfocusdpfscan.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+60-->[androidx.core:core:1.13.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\eb4afd58f88e94a2e837dbf4364ee0ae\transformed\core-1.13.0\AndroidManifest.xml:26:5-97
+60-->[androidx.core:core:1.13.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\eb4afd58f88e94a2e837dbf4364ee0ae\transformed\core-1.13.0\AndroidManifest.xml:26:22-94
+61
+62    <application
+62-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:35:5-132:19
+63        android:name="com.example.fordfocusdpfscan.FocusApp"
+63-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:36:9-33
+64        android:allowBackup="true"
+64-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:37:9-35
+65        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+65-->[androidx.core:core:1.13.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\eb4afd58f88e94a2e837dbf4364ee0ae\transformed\core-1.13.0\AndroidManifest.xml:28:18-86
+66        android:debuggable="true"
+67        android:extractNativeLibs="false"
+68        android:icon="@mipmap/ic_launcher"
+68-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:38:9-43
+69        android:label="@string/app_name"
+69-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:40:9-41
+70        android:roundIcon="@mipmap/ic_launcher_round"
+70-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:39:9-54
+71        android:supportsRtl="true"
+71-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:41:9-35
+72        android:testOnly="true"
+73        android:theme="@style/Theme.FordFocusDPFScan" >
+73-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:42:9-54
+74
+75        <!--
+76        ─────────────────────────────────────────────────────────────────
+77             Tells Android Auto to discover this app and show it in the list.
+78             Required alongside the CarAppService intent-filter.
+79        ─────────────────────────────────────────────────────────────────────
+80        -->
+81        <meta-data
+81-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:48:9-50:59
+82            android:name="com.google.android.gms.car.application"
+82-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:49:13-66
+83            android:resource="@xml/automotive_app_desc" />
+83-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:50:13-56
+84
+85        <!--
+86        ─────────────────────────────────────────────────────────────────
+87             PHONE UI — Main entry point for scanning/pairing BLE dongle
+88        ─────────────────────────────────────────────────────────────────────
+89        -->
+90        <activity
+90-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:55:9-63:20
+91            android:name="com.example.fordfocusdpfscan.ui.MainActivity"
+91-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:56:13-44
+92            android:exported="true"
+92-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:57:13-36
+93            android:windowSoftInputMode="adjustResize" >
+93-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:58:13-55
+94            <intent-filter>
+94-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:59:13-62:29
+95                <action android:name="android.intent.action.MAIN" />
+95-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:60:17-69
+95-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:60:25-66
+96
+97                <category android:name="android.intent.category.LAUNCHER" />
+97-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:61:17-77
+97-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:61:27-74
+98            </intent-filter>
+99        </activity>
+100
+101        <!--
+102        ─────────────────────────────────────────────────────────────────
+103             DIAGNOSTICA — second tab with live engine sensor data
+104        ─────────────────────────────────────────────────────────────────────
+105        -->
+106        <activity
+106-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:68:9-73:58
+107            android:name="com.example.fordfocusdpfscan.ui.DiagnosticaActivity"
+107-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:69:13-51
+108            android:exported="false"
+108-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:70:13-37
+109            android:label="Diagnostica"
+109-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:71:13-40
+110            android:parentActivityName="com.example.fordfocusdpfscan.ui.MainActivity"
+110-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:72:13-58
+111            android:windowSoftInputMode="adjustResize" />
+111-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:73:13-55
+112
+113        <!--
+114        ─────────────────────────────────────────────────────────────────
+115             ECU PID SCANNER — launched from MainActivity when connected
+116        ─────────────────────────────────────────────────────────────────────
+117        -->
+118        <activity
+118-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:78:9-83:58
+119            android:name="com.example.fordfocusdpfscan.ui.EcuScanActivity"
+119-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:79:13-47
+120            android:exported="false"
+120-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:80:13-37
+121            android:label="ECU Scanner"
+121-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:81:13-40
+122            android:parentActivityName="com.example.fordfocusdpfscan.ui.MainActivity"
+122-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:82:13-58
+123            android:windowSoftInputMode="adjustResize" />
+123-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:83:13-55
+124
+125        <!--
+126        ─────────────────────────────────────────────────────────────────
+127             REGEN HISTORY — Storico tab
+128        ─────────────────────────────────────────────────────────────────────
+129        -->
+130        <activity
+130-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:88:9-92:61
+131            android:name="com.example.fordfocusdpfscan.ui.HistoryActivity"
+131-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:89:13-47
+132            android:exported="false"
+132-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:90:13-37
+133            android:label="Storico Rigenerazioni"
+133-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:91:13-50
+134            android:parentActivityName="com.example.fordfocusdpfscan.ui.MainActivity" />
+134-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:92:13-58
+135
+136        <!--
+137        ─────────────────────────────────────────────────────────────────
+138             ANDROID AUTO — CarAppService entry point
+139             Category IOT = monitoring/utility app (not navigation/parking)
+140        ─────────────────────────────────────────────────────────────────────
+141        -->
+142        <service
+142-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:98:9-108:19
+143            android:name="com.example.fordfocusdpfscan.car.DpfCarAppService"
+143-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:99:13-49
+144            android:exported="true" >
+144-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:100:13-36
+145            <intent-filter>
+145-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:101:13-104:29
+146                <action android:name="androidx.car.app.CarAppService" />
+146-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:102:17-73
+146-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:102:25-70
+147
+148                <category android:name="androidx.car.app.category.IOT" />
+148-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:103:17-74
+148-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:103:27-71
+149            </intent-filter>
+150
+151            <meta-data
+151-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:105:13-107:37
+152                android:name="androidx.car.app.minCarApiLevel"
+152-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:106:17-63
+153                android:value="1" />
+153-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:107:17-34
+154        </service>
+155
+156        <!--
+157        ─────────────────────────────────────────────────────────────────
+158             BLE FOREGROUND SERVICE — keeps connection alive in background
+159        ─────────────────────────────────────────────────────────────────────
+160        -->
+161        <service
+161-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:113:9-116:63
+162            android:name="com.example.fordfocusdpfscan.service.DpfForegroundService"
+162-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:114:13-57
+163            android:exported="false"
+163-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:115:13-37
+164            android:foregroundServiceType="connectedDevice" />
+164-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:116:13-60
+165
+166        <!--
+167        ─────────────────────────────────────────────────────────────────
+168             FILE PROVIDER — exposes generated chime WAV file to the
+169             notification system (custom unique alert sound)
+170        ─────────────────────────────────────────────────────────────────────
+171        -->
+172        <provider
+172-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:122:9-130:20
+173            android:name="androidx.core.content.FileProvider"
+173-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:123:13-62
+174            android:authorities="com.example.fordfocusdpfscan.provider"
+174-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:124:13-72
+175            android:exported="false"
+175-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:125:13-37
+176            android:grantUriPermissions="true" >
+176-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:126:13-47
+177            <meta-data
+177-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:127:13-129:63
+178                android:name="android.support.FILE_PROVIDER_PATHS"
+178-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:128:17-67
+179                android:resource="@xml/file_provider_paths" />
+179-->C:\Users\andrea.sesuru\Desktop\personal projects\dpf-monitor-auto\app\src\main\AndroidManifest.xml:129:17-60
+180        </provider>
+181
+182        <activity
+182-->[androidx.car.app:app:1.4.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\0193a0fa438a1df79cdb853a38e9888e\transformed\app-1.4.0\AndroidManifest.xml:31:9-34:75
+183            android:name="androidx.car.app.CarAppPermissionActivity"
+183-->[androidx.car.app:app:1.4.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\0193a0fa438a1df79cdb853a38e9888e\transformed\app-1.4.0\AndroidManifest.xml:32:13-69
+184            android:exported="false"
+184-->[androidx.car.app:app:1.4.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\0193a0fa438a1df79cdb853a38e9888e\transformed\app-1.4.0\AndroidManifest.xml:33:13-37
+185            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+185-->[androidx.car.app:app:1.4.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\0193a0fa438a1df79cdb853a38e9888e\transformed\app-1.4.0\AndroidManifest.xml:34:13-72
+186
+187        <receiver
+187-->[androidx.car.app:app:1.4.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\0193a0fa438a1df79cdb853a38e9888e\transformed\app-1.4.0\AndroidManifest.xml:36:9-38:40
+188            android:name="androidx.car.app.notification.CarAppNotificationBroadcastReceiver"
+188-->[androidx.car.app:app:1.4.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\0193a0fa438a1df79cdb853a38e9888e\transformed\app-1.4.0\AndroidManifest.xml:37:13-93
+189            android:exported="false" />
+189-->[androidx.car.app:app:1.4.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\0193a0fa438a1df79cdb853a38e9888e\transformed\app-1.4.0\AndroidManifest.xml:38:13-37
+190
+191        <provider
+191-->[androidx.emoji2:emoji2:1.2.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\2f2ade0e04d08fda51b1795e021c1153\transformed\emoji2-1.2.0\AndroidManifest.xml:24:9-32:20
+192            android:name="androidx.startup.InitializationProvider"
+192-->[androidx.emoji2:emoji2:1.2.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\2f2ade0e04d08fda51b1795e021c1153\transformed\emoji2-1.2.0\AndroidManifest.xml:25:13-67
+193            android:authorities="com.example.fordfocusdpfscan.androidx-startup"
+193-->[androidx.emoji2:emoji2:1.2.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\2f2ade0e04d08fda51b1795e021c1153\transformed\emoji2-1.2.0\AndroidManifest.xml:26:13-68
+194            android:exported="false" >
+194-->[androidx.emoji2:emoji2:1.2.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\2f2ade0e04d08fda51b1795e021c1153\transformed\emoji2-1.2.0\AndroidManifest.xml:27:13-37
+195            <meta-data
+195-->[androidx.emoji2:emoji2:1.2.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\2f2ade0e04d08fda51b1795e021c1153\transformed\emoji2-1.2.0\AndroidManifest.xml:29:13-31:52
+196                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+196-->[androidx.emoji2:emoji2:1.2.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\2f2ade0e04d08fda51b1795e021c1153\transformed\emoji2-1.2.0\AndroidManifest.xml:30:17-75
+197                android:value="androidx.startup" />
+197-->[androidx.emoji2:emoji2:1.2.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\2f2ade0e04d08fda51b1795e021c1153\transformed\emoji2-1.2.0\AndroidManifest.xml:31:17-49
+198            <meta-data
+198-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\482bd67075eaff36d672cd3ecbc1dcd9\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:29:13-31:52
+199                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+199-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\482bd67075eaff36d672cd3ecbc1dcd9\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:30:17-78
+200                android:value="androidx.startup" />
+200-->[androidx.lifecycle:lifecycle-process:2.7.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\482bd67075eaff36d672cd3ecbc1dcd9\transformed\lifecycle-process-2.7.0\AndroidManifest.xml:31:17-49
+201            <meta-data
+201-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:29:13-31:52
+202                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+202-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:30:17-85
+203                android:value="androidx.startup" />
+203-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:31:17-49
+204        </provider>
+205
+206        <uses-library
+206-->[androidx.window:window:1.0.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\849091744055216a7756d53204e883af\transformed\window-1.0.0\AndroidManifest.xml:25:9-27:40
+207            android:name="androidx.window.extensions"
+207-->[androidx.window:window:1.0.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\849091744055216a7756d53204e883af\transformed\window-1.0.0\AndroidManifest.xml:26:13-54
+208            android:required="false" />
+208-->[androidx.window:window:1.0.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\849091744055216a7756d53204e883af\transformed\window-1.0.0\AndroidManifest.xml:27:13-37
+209        <uses-library
+209-->[androidx.window:window:1.0.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\849091744055216a7756d53204e883af\transformed\window-1.0.0\AndroidManifest.xml:28:9-30:40
+210            android:name="androidx.window.sidecar"
+210-->[androidx.window:window:1.0.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\849091744055216a7756d53204e883af\transformed\window-1.0.0\AndroidManifest.xml:29:13-51
+211            android:required="false" />
+211-->[androidx.window:window:1.0.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\849091744055216a7756d53204e883af\transformed\window-1.0.0\AndroidManifest.xml:30:13-37
+212
+213        <service
+213-->[androidx.room:room-runtime:2.6.1] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\b13d3fc4979b8078e1084b716074a66f\transformed\room-runtime-2.6.1\AndroidManifest.xml:24:9-28:63
+214            android:name="androidx.room.MultiInstanceInvalidationService"
+214-->[androidx.room:room-runtime:2.6.1] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\b13d3fc4979b8078e1084b716074a66f\transformed\room-runtime-2.6.1\AndroidManifest.xml:25:13-74
+215            android:directBootAware="true"
+215-->[androidx.room:room-runtime:2.6.1] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\b13d3fc4979b8078e1084b716074a66f\transformed\room-runtime-2.6.1\AndroidManifest.xml:26:13-43
+216            android:exported="false" />
+216-->[androidx.room:room-runtime:2.6.1] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\b13d3fc4979b8078e1084b716074a66f\transformed\room-runtime-2.6.1\AndroidManifest.xml:27:13-37
+217
+218        <receiver
+218-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:34:9-52:20
+219            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+219-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:35:13-76
+220            android:directBootAware="false"
+220-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:36:13-44
+221            android:enabled="true"
+221-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:37:13-35
+222            android:exported="true"
+222-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:38:13-36
+223            android:permission="android.permission.DUMP" >
+223-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:39:13-57
+224            <intent-filter>
+224-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:40:13-42:29
+225                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+225-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:41:17-91
+225-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:41:25-88
+226            </intent-filter>
+227            <intent-filter>
+227-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:43:13-45:29
+228                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+228-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:44:17-85
+228-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:44:25-82
+229            </intent-filter>
+230            <intent-filter>
+230-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:46:13-48:29
+231                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+231-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:47:17-88
+231-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:47:25-85
+232            </intent-filter>
+233            <intent-filter>
+233-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:49:13-51:29
+234                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+234-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:50:17-95
+234-->[androidx.profileinstaller:profileinstaller:1.3.0] C:\Users\andrea.sesuru\.gradle\caches\8.11.1\transforms\d9c942fe76959372c3865e97110e28a0\transformed\profileinstaller-1.3.0\AndroidManifest.xml:50:25-92
+235            </intent-filter>
+236        </receiver>
+237    </application>
+238
+239</manifest>

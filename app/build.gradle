@@ -1,0 +1,89 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-kapt'
+}
+
+android {
+    namespace 'com.example.fordfocusdpfscan'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.example.fordfocusdpfscan"
+        minSdk 26                   // Android 8.0 — required by Car App Library
+        targetSdk 34
+        versionCode 13
+        versionName "2.2"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    buildFeatures {
+        viewBinding true            // For type-safe access to activity_main views
+        buildConfig true            // Exposes BuildConfig.VERSION_NAME / VERSION_CODE
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+}
+
+dependencies {
+    // ── Android Auto / Car App Library ───────────────────────────────────────
+    implementation 'androidx.car.app:app:1.4.0'
+
+    // ── Kotlin Coroutines (BLE polling + StateFlow) ───────────────────────────
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+
+    // ── AndroidX Core + Lifecycle ─────────────────────────────────────────────
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-service:2.7.0'
+
+    // ── UI (phone screen) ─────────────────────────────────────────────────────
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+
+    // ── Charts (DPF circular gauges) ──────────────────────────────────────────
+    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
+
+    // ── Shimmer (skeleton loading animation) ─────────────────────────────────
+    implementation 'com.facebook.shimmer:shimmer:0.5.0'
+
+    // ── Lottie (regen / status animations) ───────────────────────────────────
+    implementation 'com.airbnb.android:lottie:6.4.0'
+
+    // ── Activity / Fragment KTX ───────────────────────────────────────────────
+    implementation 'androidx.activity:activity-ktx:1.8.2'
+
+    // ── SharedPreferences (last service KM) ──────────────────────────────────
+    implementation 'androidx.preference:preference-ktx:1.2.1'
+
+    // ── Room (regen history database) ────────────────────────────────────────
+    def room_version = "2.6.1"
+    implementation "androidx.room:room-runtime:$room_version"
+    kapt "androidx.room:room-compiler:$room_version"
+    implementation "androidx.room:room-ktx:$room_version"
+
+    // ── RecyclerView (history list) ───────────────────────────────────────────
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+
+    // ── Testing ───────────────────────────────────────────────────────────────
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}

@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         BLUETOOTH PERMISSIONS
+         Android 12+ uses BLUETOOTH_SCAN / BLUETOOTH_CONNECT.
+         Older APIs use BLUETOOTH / BLUETOOTH_ADMIN + ACCESS_FINE_LOCATION.
+    ═══════════════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+
+    <!-- API 31+ BLE permissions — neverForLocation: we connect by name, not GPS -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════════
+         FOREGROUND SERVICE (keeps BLE alive in background)
+    ═══════════════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+
+    <!-- API 33+ — required to post notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- BLE hardware feature — the app requires BLE to function -->
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+
+    <application
+        android:name=".FocusApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.FordFocusDPFScan">
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             Tells Android Auto to discover this app and show it in the list.
+             Required alongside the CarAppService intent-filter.
+        ───────────────────────────────────────────────────────────────────── -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             PHONE UI — Main entry point for scanning/pairing BLE dongle
+        ───────────────────────────────────────────────────────────────────── -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             DIAGNOSTICA — second tab with live engine sensor data
+        ───────────────────────────────────────────────────────────────────── -->
+        <activity
+            android:name=".ui.DiagnosticaActivity"
+            android:exported="false"
+            android:label="Diagnostica"
+            android:parentActivityName=".ui.MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             ECU PID SCANNER — launched from MainActivity when connected
+        ───────────────────────────────────────────────────────────────────── -->
+        <activity
+            android:name=".ui.EcuScanActivity"
+            android:exported="false"
+            android:label="ECU Scanner"
+            android:parentActivityName=".ui.MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             REGEN HISTORY — Storico tab
+        ───────────────────────────────────────────────────────────────────── -->
+        <activity
+            android:name=".ui.HistoryActivity"
+            android:exported="false"
+            android:label="Storico Rigenerazioni"
+            android:parentActivityName=".ui.MainActivity" />
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             ANDROID AUTO — CarAppService entry point
+             Category IOT = monitoring/utility app (not navigation/parking)
+        ───────────────────────────────────────────────────────────────────── -->
+        <service
+            android:name=".car.DpfCarAppService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.IOT" />
+            </intent-filter>
+            <meta-data
+                android:name="androidx.car.app.minCarApiLevel"
+                android:value="1" />
+        </service>
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             BLE FOREGROUND SERVICE — keeps connection alive in background
+        ───────────────────────────────────────────────────────────────────── -->
+        <service
+            android:name=".service.DpfForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             FILE PROVIDER — exposes generated chime WAV file to the
+             notification system (custom unique alert sound)
+        ───────────────────────────────────────────────────────────────────── -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.fordfocusdpfscan.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider_paths" />
+        </provider>
+
+    </application>
+</manifest>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ── Ford Night AMOLED palette ────────────────────────────────────────
+         True black background = OLED pixels off = battery saving on S26 Ultra.
+         Ford Blue borders give identity without flooding the screen with colour.
+    ─────────────────────────────────────────────────────────────────────── -->
+
+    <!-- Ford Blue brand colours -->
+    <color name="dpf_blue_dark">#003478</color>      <!-- Ford Blue official -->
+    <color name="dpf_blue_mid">#004A9F</color>       <!-- Ford Medium Blue -->
+    <color name="dpf_blue_light">#0066CC</color>     <!-- Ford Accent / buttons -->
+    <color name="dpf_orange">#FF6B00</color>         <!-- Regen flame / warning -->
+    <color name="dpf_orange_light">#FF9500</color>   <!-- Secondary accent -->
+
+    <!-- ── Status colors — vivid on black ──────────────────────────────────── -->
+    <color name="status_ok">#00C853</color>          <!-- Bright green — pops on AMOLED -->
+    <color name="status_ok_light">#69F0AE</color>
+    <color name="status_warning">#FF9500</color>     <!-- iOS amber — readable on black -->
+    <color name="status_danger">#FF3B30</color>      <!-- iOS red — vivid on black -->
+    <color name="status_danger_light">#FF6B60</color>
+    <color name="status_complete">#00E676</color>    <!-- Bright green — completed -->
+    <color name="status_neutral">#3A4A5C</color>     <!-- Cool grey — no data -->
+
+    <!-- ── UI surfaces — AMOLED black hierarchy ─────────────────────────────
+         background      = #000000  true black  (OLED pixels off)
+         card_background = #0F0F0F  barely-there lift
+         card_stroke     = #003478  Ford Blue border — cards "float" on black
+    ─────────────────────────────────────────────────────────────────────── -->
+    <color name="background">#000000</color>         <!-- AMOLED true black -->
+    <color name="card_background">#0F0F0F</color>    <!-- Near-black card surface -->
+    <color name="card_stroke">#003478</color>        <!-- Ford Blue card border -->
+    <color name="card_border">#003478</color>        <!-- Alias — used in tab_bar / diag cells -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#7A8FA6</color>     <!-- Cool grey — readable on black -->
+    <color name="text_hint">#3A4A5C</color>
+    <color name="divider">#1A1A1A</color>            <!-- Very subtle divider on black -->
+
+    <!-- ── Android system theme ────────────────────────────────────────────── -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>

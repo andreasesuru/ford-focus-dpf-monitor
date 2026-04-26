@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.fordfocusdpfscan"
+    android:versionCode="13"
+    android:versionName="2.2" >
+
+    <uses-sdk
+        android:minSdkVersion="26"
+        android:targetSdkVersion="34" />
+
+    <!--
+    ═══════════════════════════════════════════════════════════════════════
+         BLUETOOTH PERMISSIONS
+         Android 12+ uses BLUETOOTH_SCAN / BLUETOOTH_CONNECT.
+         Older APIs use BLUETOOTH / BLUETOOTH_ADMIN + ACCESS_FINE_LOCATION.
+    ═══════════════════════════════════════════════════════════════════════════
+    -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+
+    <!-- API 31+ BLE permissions — neverForLocation: we connect by name, not GPS -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!--
+    ═══════════════════════════════════════════════════════════════════════
+         FOREGROUND SERVICE (keeps BLE alive in background)
+    ═══════════════════════════════════════════════════════════════════════════
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+
+    <!-- API 33+ — required to post notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- BLE hardware feature — the app requires BLE to function -->
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="true" />
+
+    <queries>
+        <provider
+            android:name="androidx.car.app.connection.provider"
+            android:authorities="androidx.car.app.connection" />
+    </queries>
+
+    <permission
+        android:name="com.example.fordfocusdpfscan.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="com.example.fordfocusdpfscan.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+
+    <application
+        android:name="com.example.fordfocusdpfscan.FocusApp"
+        android:allowBackup="true"
+        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+        android:debuggable="true"
+        android:extractNativeLibs="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:testOnly="true"
+        android:theme="@style/Theme.FordFocusDPFScan" >
+
+        <!--
+        ─────────────────────────────────────────────────────────────────
+             Tells Android Auto to discover this app and show it in the list.
+             Required alongside the CarAppService intent-filter.
+        ─────────────────────────────────────────────────────────────────────
+        -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
+        <!--
+        ─────────────────────────────────────────────────────────────────
+             PHONE UI — Main entry point for scanning/pairing BLE dongle
+        ─────────────────────────────────────────────────────────────────────
+        -->
+        <activity
+            android:name="com.example.fordfocusdpfscan.ui.MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+        ─────────────────────────────────────────────────────────────────
+             DIAGNOSTICA — second tab with live engine sensor data
+        ─────────────────────────────────────────────────────────────────────
+        -->
+        <activity
+            android:name="com.example.fordfocusdpfscan.ui.DiagnosticaActivity"
+            android:exported="false"
+            android:label="Diagnostica"
+            android:parentActivityName="com.example.fordfocusdpfscan.ui.MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!--
+        ─────────────────────────────────────────────────────────────────
+             ECU PID SCANNER — launched from MainActivity when connected
+        ─────────────────────────────────────────────────────────────────────
+        -->
+        <activity
+            android:name="com.example.fordfocusdpfscan.ui.EcuScanActivity"
+            android:exported="false"
+            android:label="ECU Scanner"
+            android:parentActivityName="com.example.fordfocusdpfscan.ui.MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!--
+        ─────────────────────────────────────────────────────────────────
+             REGEN HISTORY — Storico tab
+        ─────────────────────────────────────────────────────────────────────
+        -->
+        <activity
+            android:name="com.example.fordfocusdpfscan.ui.HistoryActivity"
+            android:exported="false"
+            android:label="Storico Rigenerazioni"
+            android:parentActivityName="com.example.fordfocusdpfscan.ui.MainActivity" />
+
+        <!--
+        ─────────────────────────────────────────────────────────────────
+             ANDROID AUTO — CarAppService entry point
+             Category IOT = monitoring/utility app (not navigation/parking)
+        ─────────────────────────────────────────────────────────────────────
+        -->
+        <service
+            android:name="com.example.fordfocusdpfscan.car.DpfCarAppService"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+
+                <category android:name="androidx.car.app.category.IOT" />
+            </intent-filter>
+
+            <meta-data
+                android:name="androidx.car.app.minCarApiLevel"
+                android:value="1" />
+        </service>
+
+        <!--
+        ─────────────────────────────────────────────────────────────────
+             BLE FOREGROUND SERVICE — keeps connection alive in background
+        ─────────────────────────────────────────────────────────────────────
+        -->
+        <service
+            android:name="com.example.fordfocusdpfscan.service.DpfForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <!--
+        ─────────────────────────────────────────────────────────────────
+             FILE PROVIDER — exposes generated chime WAV file to the
+             notification system (custom unique alert sound)
+        ─────────────────────────────────────────────────────────────────────
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.example.fordfocusdpfscan.provider"
+            android:exported="false"
+            android:grantUriPermissions="true" >
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider_paths" />
+        </provider>
+
+        <activity
+            android:name="androidx.car.app.CarAppPermissionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <receiver
+            android:name="androidx.car.app.notification.CarAppNotificationBroadcastReceiver"
+            android:exported="false" />
+
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="com.example.fordfocusdpfscan.androidx-startup"
+            android:exported="false" >
+            <meta-data
+                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+                android:value="androidx.startup" />
+            <meta-data
+                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+                android:value="androidx.startup" />
+            <meta-data
+                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+                android:value="androidx.startup" />
+        </provider>
+
+        <uses-library
+            android:name="androidx.window.extensions"
+            android:required="false" />
+        <uses-library
+            android:name="androidx.window.sidecar"
+            android:required="false" />
+
+        <service
+            android:name="androidx.room.MultiInstanceInvalidationService"
+            android:directBootAware="true"
+            android:exported="false" />
+
+        <receiver
+            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+            android:directBootAware="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.DUMP" >
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

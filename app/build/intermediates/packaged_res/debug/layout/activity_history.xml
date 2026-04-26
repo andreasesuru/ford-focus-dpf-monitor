@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
+
+    <!-- ── Tab bar (shared across all screens) ──────────────────────────── -->
+    <include layout="@layout/layout_tab_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <!-- ── Stats bar ────────────────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/layoutStats"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="center_vertical">
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/tvTotalRegens"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="0" android:textSize="22sp" android:textStyle="bold"
+                android:textColor="#4F8EF7"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="TOTALI" android:textSize="9sp" android:textColor="@color/text_secondary"/>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/tvCompleted"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="0" android:textSize="22sp" android:textStyle="bold"
+                android:textColor="#34C759"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="COMPLET." android:textSize="9sp" android:textColor="@color/text_secondary"/>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/tvAvgDuration"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="—" android:textSize="22sp" android:textStyle="bold"
+                android:textColor="@color/text_primary"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="DURATA" android:textSize="9sp" android:textColor="@color/text_secondary"/>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical" android:gravity="center">
+            <TextView android:id="@+id/tvAvgSootReduction"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="—" android:textSize="22sp" android:textStyle="bold"
+                android:textColor="#34C759"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="SOOT MED." android:textSize="9sp" android:textColor="@color/text_secondary"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ── Export button ────────────────────────────────────────────────── -->
+    <Button
+        android:id="@+id/btnExport"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="8dp"
+        android:text="📄  Esporta report per meccanico"
+        android:textSize="13sp"
+        android:textColor="#4F8EF7"
+        android:backgroundTint="@android:color/transparent"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+
+    <!-- ── Empty state ───────────────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/viewEmptyState"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp"
+        android:visibility="gone">
+
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="📋" android:textSize="48sp" android:layout_marginBottom="12dp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Nessuna rigenerazione registrata"
+            android:textColor="@color/text_primary" android:textSize="16sp"
+            android:textStyle="bold" android:gravity="center" android:layout_marginBottom="8dp"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Lo storico si popola automaticamente quando l'app rileva una rigenerazione attiva del DPF."
+            android:textColor="@color/text_secondary" android:textSize="13sp"
+            android:gravity="center" android:lineSpacingMultiplier="1.4"/>
+    </LinearLayout>
+
+    <!-- ── Sessions list ─────────────────────────────────────────────────── -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvSessions"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp"/>
+
+</LinearLayout>

@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=390, initial-scale=1.0"/>
+<title>DPF Monitor — Live & Diagnostica</title>
+<style>
+  :root {
+    --bg:          #080808;
+    --surface:     #111111;
+    --surface2:    #181818;
+    --border:      #222222;
+    --accent:      #4F8EF7;
+    --ok:          #34C759;
+    --warn:        #FF9F0A;
+    --danger:      #FF3B30;
+    --text:        #F0F0F5;
+    --text-muted:  #6E6E8A;
+    --text-label:  #9898B0;
+    --orange:      #FF6B2B;
+    --purple:      #BF5AF2;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+  }
+  .phone {
+    width: 390px;
+    min-height: 100vh;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding-bottom: 36px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 20px 12px;
+    background: var(--bg);
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .app-icon {
+    width: 40px; height: 40px; border-radius: 12px;
+    overflow: hidden; display: flex; align-items: center; justify-content: center;
+    background: #1a1a1a;
+  }
+  .app-icon img {
+    width: 40px; height: 40px; object-fit: cover;
+    border-radius: 12px; filter: grayscale(1);
+  }
+  .app-name { font-size: 17px; font-weight: 700; letter-spacing: 0.3px; }
+  .app-sub  { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .version-badge {
+    font-size: 11px; font-weight: 600; color: var(--accent);
+    background: rgba(79,142,247,0.12); border: 1px solid rgba(79,142,247,0.25);
+    border-radius: 6px; padding: 3px 8px;
+  }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex; padding: 6px 16px 10px; gap: 6px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .tab-item {
+    flex: 1; padding: 9px 0; text-align: center;
+    font-size: 13px; font-weight: 600; border-radius: 10px;
+    color: var(--text-muted); cursor: pointer;
+    text-decoration: none; border: 1px solid transparent;
+    transition: all 0.15s ease;
+  }
+  .tab-item.active {
+    background: var(--surface); color: var(--text); border-color: var(--border);
+  }
+
+  .live-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ok); animation: pulse 2s infinite; display: inline-block;
+    margin-right: 4px; vertical-align: middle;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* ── Section ── */
+  .section-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.2px; color: var(--text-muted);
+    padding: 16px 20px 6px;
+  }
+
+  /* ── Cards grid ── */
+  .cards-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; padding: 0 16px; margin-bottom: 10px;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 16px;
+  }
+  .card.full { grid-column: 1 / -1; }
+
+  .card-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 8px;
+  }
+  .card-value {
+    font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -0.5px;
+  }
+  .card-value.md { font-size: 26px; }
+  .card-unit { font-size: 13px; font-weight: 500; color: var(--text-muted); margin-left: 2px; }
+  .card-pid  { font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+  /* range hint row */
+  .range-row {
+    display: flex; align-items: center; gap: 5px;
+    margin-top: 7px;
+  }
+  .range-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+  .range-text { font-size: 10px; color: var(--text-muted); line-height: 1.3; }
+  .range-text b { color: var(--text-label); font-weight: 600; }
+
+  /* range scale bar */
+  .scale-wrap {
+    position: relative; height: 4px;
+    background: var(--surface2); border-radius: 3px;
+    margin-top: 10px; overflow: visible;
+  }
+  .scale-fill { height: 100%; border-radius: 3px; }
+  .scale-marker {
+    position: absolute; top: -3px;
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 2px solid var(--bg);
+    transform: translateX(-50%);
+  }
+
+  /* color tokens */
+  .ok     { color: var(--ok); }
+  .warn   { color: var(--warn); }
+  .danger { color: var(--danger); }
+  .accent { color: var(--accent); }
+  .purple { color: var(--purple); }
+
+  .dot-ok     { background: var(--ok); }
+  .dot-warn   { background: var(--warn); }
+  .dot-danger { background: var(--danger); }
+  .dot-accent { background: var(--accent); }
+
+  /* ── Explanation cards (big ones) ── */
+  .explain-card {
+    margin: 0 16px 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+  }
+  .explain-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px 10px;
+  }
+  .explain-icon-wrap {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .explain-title-block { flex: 1; margin-left: 12px; }
+  .explain-title { font-size: 13px; font-weight: 700; }
+  .explain-subtitle { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+  .explain-value { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .explain-value span { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+
+  /* range table inside explain card */
+  .range-table { padding: 0 18px 14px; }
+  .range-table-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .range-table-row:last-child { border-bottom: none; }
+  .range-badge {
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    border-radius: 4px; padding: 2px 6px; flex-shrink: 0; margin-top: 1px;
+    letter-spacing: 0.5px;
+  }
+  .badge-ok     { background: rgba(52,199,89,0.15);  color: var(--ok); }
+  .badge-warn   { background: rgba(255,159,10,0.15); color: var(--warn); }
+  .badge-danger { background: rgba(255,59,48,0.12);  color: var(--danger); }
+  .badge-info   { background: rgba(79,142,247,0.15); color: var(--accent); }
+  .range-desc { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+  .range-desc b { color: var(--text-label); font-weight: 600; }
+
+  /* divider line inside explain card */
+  .explain-divider { height: 1px; background: var(--border); margin: 0 18px 10px; }
+  .explain-note {
+    font-size: 11px; color: var(--text-muted);
+    line-height: 1.6; padding: 0 18px 14px;
+  }
+  .explain-note b { color: var(--text-label); }
+
+  /* ── Ash card ── */
+  .ash-card {
+    margin: 0 16px 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 18px;
+  }
+  .ash-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .ash-title { font-size: 13px; font-weight: 700; }
+  .ash-sub   { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+  .ash-pct   { font-size: 28px; font-weight: 800; color: var(--ok); letter-spacing: -0.5px; }
+  .ash-pct span { font-size: 14px; font-weight: 500; color: var(--text-muted); }
+  .ash-bar-bg {
+    height: 8px; background: var(--surface2); border-radius: 4px;
+    overflow: hidden; margin-bottom: 6px;
+  }
+  .ash-bar-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, var(--ok) 0%, var(--ok) 40%, var(--warn) 60%, var(--danger) 100%);
+  }
+  .ash-ticks {
+    display: flex; justify-content: space-between;
+    font-size: 9px; color: var(--text-muted); margin-bottom: 12px;
+  }
+
+  /* ── Info rows ── */
+  .info-card {
+    margin: 0 16px 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; overflow: hidden;
+  }
+  .info-row {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    padding: 13px 18px; border-bottom: 1px solid var(--border);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row-left { display: flex; align-items: flex-start; gap: 10px; }
+  .info-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; flex-shrink: 0; margin-top: 1px;
+  }
+  .icon-blue   { background: rgba(79,142,247,0.15); }
+  .icon-green  { background: rgba(52,199,89,0.12); }
+  .icon-orange { background: rgba(255,107,43,0.15); }
+  .icon-warn   { background: rgba(255,159,10,0.15); }
+  .icon-red    { background: rgba(255,59,48,0.12); }
+  .icon-purple { background: rgba(191,90,242,0.15); }
+
+  .info-key      { font-size: 13px; font-weight: 500; color: var(--text-label); }
+  .info-key-sub  { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+  .info-key-range{ font-size: 10px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+  .info-right { text-align: right; flex-shrink: 0; }
+  .info-val  { font-size: 15px; font-weight: 700; color: var(--text); }
+  .info-val.ok   { color: var(--ok); }
+  .info-val.warn { color: var(--warn); }
+  .info-val.danger { color: var(--danger); }
+  .info-status { font-size: 10px; margin-top: 3px; font-weight: 600; }
+
+  /* ── EGR context chip (regime attuale) ── */
+  .egr-ctx {
+    font-size: 10px; font-weight: 700; margin-top: 5px;
+    text-align: right; padding: 2px 7px; border-radius: 5px;
+    white-space: nowrap;
+  }
+  .egr-ctx.ok     { background: rgba(52,199,89,0.12);  color: var(--ok);     }
+  .egr-ctx.warn   { background: rgba(255,159,10,0.12); color: var(--warn);   }
+  .egr-ctx.danger { background: rgba(255,59,48,0.10);  color: var(--danger); }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="app-icon">
+        <img src="ford_icon.png" alt="icon"/>
+      </div>
+      <div>
+        <div class="app-name">DPF Monitor</div>
+        <div class="app-sub">Ford Focus 1.5 TDCi · EDC17C70</div>
+      </div>
+    </div>
+    <div class="version-badge">v2.2</div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <a href="index.html" class="tab-item">🔍 Monitor</a>
+    <a href="page2.html" class="tab-item active"><span class="live-dot"></span>Diagnostica</a>
+    <a href="page3.html" class="tab-item">📋 Storico</a>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       DPF AVANZATO
+  ══════════════════════════════════════ -->
+  <div class="section-label">DPF Avanzato</div>
+
+  <!-- Ash Level -->
+  <div class="ash-card">
+    <div class="ash-top">
+      <div>
+        <div class="ash-title">🪨 Cenere DPF (Ash Level)</div>
+        <div class="ash-sub">PID 22 0578 · accumulo permanente · non si elimina con la regen</div>
+      </div>
+      <div class="ash-pct">8<span>%</span></div>
+    </div>
+    <div class="ash-bar-bg">
+      <div class="ash-bar-fill" style="width:8%"></div>
+    </div>
+    <div class="ash-ticks">
+      <span>0% OK</span><span>⚠ 50%</span><span>🔴 80%</span><span>100%</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <div class="range-table-row" style="padding:5px 0;border:none">
+        <div class="range-badge badge-ok">0–50%</div>
+        <div class="range-desc">Normale. Nessuna azione richiesta.</div>
+      </div>
+      <div class="range-table-row" style="padding:5px 0;border:none">
+        <div class="range-badge badge-warn">50–80%</div>
+        <div class="range-desc">Pianifica pulizia DPF. Efficienza ridotta.</div>
+      </div>
+      <div class="range-table-row" style="padding:5px 0;border:none">
+        <div class="range-badge badge-danger">&gt;80%</div>
+        <div class="range-desc"><b>Pulizia urgente.</b> Rischio soffocamento motore e danni alla turbina per contropressione.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delta T EGT (big explanation card) -->
+  <div class="explain-card">
+    <div class="explain-header">
+      <div class="explain-icon-wrap" style="background:rgba(79,142,247,0.12)">🌡️</div>
+      <div class="explain-title-block">
+        <div class="explain-title accent">ΔT EGT — Efficienza DPF</div>
+        <div class="explain-subtitle">Differenza temperatura pre/post DPF · PID 01 78 vs 01 79</div>
+      </div>
+      <div>
+        <div class="explain-value ok">−23 <span>°C</span></div>
+        <div style="font-size:10px;color:var(--text-muted);text-align:right;margin-top:2px">pre&gt;post</div>
+      </div>
+    </div>
+    <div class="explain-divider"></div>
+    <div class="explain-note">
+      Il DPF ha due sonde: <b>ingresso</b> (pre-filtro) e <b>uscita</b> (post-filtro). La differenza dice cosa sta succedendo al suo interno.
+    </div>
+    <div class="range-table">
+      <div class="range-table-row">
+        <div class="range-badge badge-ok">Normale</div>
+        <div class="range-desc">Pre &gt; Post di <b>10–40°C</b>. Il DPF assorbe calore. Tutto ok, nessuna regen in corso.</div>
+      </div>
+      <div class="range-table-row">
+        <div class="range-badge badge-info">Regen attiva</div>
+        <div class="range-desc">Post &gt; Pre di <b>50–150°C</b>. La combustione del soot nel filtro genera calore — è normale e buono.</div>
+      </div>
+      <div class="range-table-row">
+        <div class="range-badge badge-warn">Attenzione</div>
+        <div class="range-desc">Post &gt; Pre di <b>&gt;200°C</b> senza regen dichiarata. Possibile cortocircuito termico o sonda guasta.</div>
+      </div>
+      <div class="range-table-row">
+        <div class="range-badge badge-danger">Pericolo</div>
+        <div class="range-desc">Post &gt; <b>800°C</b>. Rischio fusione del substrato ceramico del DPF. Fermarsi subito.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EGT in / out cards -->
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-label">EGT Ingresso</div>
+      <div><span class="card-value warn">185</span><span class="card-unit">°C</span></div>
+      <div class="card-pid">PID 01 78 · pre-DPF</div>
+      <div class="range-row" style="margin-top:8px">
+        <div class="range-dot dot-ok"></div>
+        <div class="range-text">Normale <b>200–500°C</b> in guida</div>
+      </div>
+      <div class="range-row">
+        <div class="range-dot dot-warn"></div>
+        <div class="range-text">Basso ora = idle/freddo</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">EGT Uscita</div>
+      <div><span class="card-value ok">162</span><span class="card-unit">°C</span></div>
+      <div class="card-pid">PID 01 79 · post-DPF</div>
+      <div class="range-row" style="margin-top:8px">
+        <div class="range-dot dot-danger"></div>
+        <div class="range-text">Pericolo <b>&gt;800°C</b></div>
+      </div>
+      <div class="range-row">
+        <div class="range-dot dot-info" style="background:var(--accent)"></div>
+        <div class="range-text">Regen: post &gt; pre</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Regens + Fuel Dilution -->
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-label">Regens Totali</div>
+      <div><span class="card-value accent">47</span></div>
+      <div class="card-pid">PID 22 050C</div>
+      <div class="range-row" style="margin-top:8px">
+        <div class="range-dot dot-ok"></div>
+        <div class="range-text">Dato storico. Valuta insieme ad Ash %</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-label">Fuel in Olio</div>
+      <div><span class="card-value ok">0.3</span><span class="card-unit">%</span></div>
+      <div class="card-pid">PID 22 05xx</div>
+      <div class="range-row" style="margin-top:8px">
+        <div class="range-dot dot-ok"></div>
+        <div class="range-text">OK &lt;1% · Cambio &gt;3%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       MOTORE LIVE
+  ══════════════════════════════════════ -->
+  <div class="section-label">Motore Live</div>
+
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-label">RPM</div>
+      <div><span class="card-value md accent">820</span></div>
+      <div class="card-pid">PID 01 0C</div>
+      <div class="scale-wrap" style="background:linear-gradient(90deg,var(--ok) 0%,var(--ok) 60%,var(--warn) 80%,var(--danger) 100%)">
+        <div class="scale-marker" style="left:16.4%;background:var(--accent)"></div>
+      </div>
+      <div class="range-row" style="margin-top:8px">
+        <div class="range-dot dot-ok"></div>
+        <div class="range-text">Idle <b>750–900</b> · Guida <b>1500–3000</b></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Velocità</div>
+      <div><span class="card-value md">0</span><span class="card-unit">km/h</span></div>
+      <div class="card-pid">PID 01 0D</div>
+      <div class="range-row" style="margin-top:18px">
+        <div class="range-dot dot-ok"></div>
+        <div class="range-text">Fermo/idle ora</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Engine Load</div>
+      <div><span class="card-value ok">12</span><span class="card-unit">%</span></div>
+      <div class="card-pid">PID 01 04</div>
+      <div class="range-row" style="margin-top:8px">
+        <div class="range-dot dot-ok"></div>
+        <div class="range-text">Idle <b>&lt;20%</b> · Normale <b>20–60%</b></div>
+      </div>
+      <div class="range-row">
+        <div class="range-dot dot-warn"></div>
+        <div class="range-text">Alto <b>&gt;80%</b></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Boost</div>
+      <div><span class="card-value ok">1.01</span><span class="card-unit">bar</span></div>
+      <div class="card-pid">PID 01 0B</div>
+      <div class="range-row" style="margin-top:8px">
+        <div class="range-dot dot-ok"></div>
+        <div class="range-text">Idle <b>~1.0</b> · Guida <b>1.2–1.9</b></div>
+      </div>
+      <div class="range-row">
+        <div class="range-dot dot-danger"></div>
+        <div class="range-text">Overboost <b>&gt;2.3</b></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EGR explanation card -->
+  <div class="explain-card">
+    <div class="explain-header">
+      <div class="explain-icon-wrap" style="background:rgba(255,159,10,0.12)">♻️</div>
+      <div class="explain-title-block">
+        <div class="explain-title warn">EGR — Ricircolo Gas Scarico</div>
+        <div class="explain-subtitle">PID 22 0583 · influenza diretta sulla produzione di soot</div>
+      </div>
+      <div>
+        <div class="explain-value warn">35 <span>%</span></div>
+        <div class="egr-ctx warn">⚠️ Guida · limite sup.</div>
+      </div>
+    </div>
+    <div class="explain-divider"></div>
+    <div class="explain-note">
+      L'EGR (Exhaust Gas Recirculation) reimmette gas di scarico nel collettore di aspirazione per abbassare le temperature di combustione e ridurre gli NOx. <b>Più EGR = più soot prodotto</b> = DPF si intasa più velocemente.<br><br>
+      <b>35% in guida</b> è al limite superiore del normale (range guida: 10–35%). Non allarmante, ma da tenere d'occhio: se sale oltre 40% a carico parziale, potrebbe indicare la valvola EGR parzialmente bloccata aperta.
+    </div>
+    <div class="range-table">
+      <div class="range-table-row">
+        <div class="range-badge badge-ok">Idle</div>
+        <div class="range-desc">Normale <b>20–50%</b>. Alto di default a bassi carichi.</div>
+      </div>
+      <div class="range-table-row">
+        <div class="range-badge badge-ok">Guida</div>
+        <div class="range-desc">Normale <b>10–35%</b> a carico parziale.</div>
+      </div>
+      <div class="range-table-row">
+        <div class="range-badge badge-warn">Pieno carico</div>
+        <div class="range-desc">Deve scendere a <b>&lt;5%</b>. Se resta alta: valvola EGR bloccata.</div>
+      </div>
+      <div class="range-table-row">
+        <div class="range-badge badge-danger">Sempre alta</div>
+        <div class="range-desc"><b>&gt;50% costante</b> = valvola EGR bloccata aperta. Soot elevato, DPF si intasa rapidamente.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-label">Inject. Qty</div>
+      <div><span class="card-value md ok">4.2</span><span class="card-unit">mg/st</span></div>
+      <div class="card-pid">PID 22 05xx</div>
+      <div class="range-row" style="margin-top:8px">
+        <div class="range-dot dot-ok"></div>
+        <div class="range-text">Idle <b>2–6</b> · Guida <b>10–30</b></div>
+      </div>
+      <div class="range-row">
+        <div class="range-dot" style="background:var(--accent)"></div>
+        <div class="range-text">Pieno carico <b>35–50</b></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Aria Aspirata</div>
+      <div><span class="card-value md">28</span><span class="card-unit">°C</span></div>
+      <div class="card-pid">PID 01 0F</div>
+      <div class="range-row" style="margin-top:8px">
+        <div class="range-dot dot-ok"></div>
+        <div class="range-text">Normale <b>&lt;60°C</b></div>
+      </div>
+      <div class="range-row">
+        <div class="range-dot dot-warn"></div>
+        <div class="range-text">Intercooler? <b>&gt;70°C</b></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       OLIO & AMBIENTE
+  ══════════════════════════════════════ -->
+  <div class="section-label">Olio & Ambiente</div>
+
+  <div class="info-card">
+
+    <div class="info-row">
+      <div class="info-row-left">
+        <div class="info-icon icon-orange">🌡️</div>
+        <div>
+          <div class="info-key">Temperatura Olio</div>
+          <div class="info-key-sub">PID 22 xxxx · da confermare</div>
+          <div class="info-key-range">
+            🟢 Normale <b>90–110°C</b><br>
+            🟡 Freddo <b>&lt;60°C</b> → non spingere<br>
+            🔴 Caldo <b>&gt;130°C</b> → fermarsi
+          </div>
+        </div>
+      </div>
+      <div class="info-right">
+        <div class="info-val warn">45 °C</div>
+        <div class="info-status" style="color:var(--warn)">In riscaldamento</div>
+      </div>
+    </div>
+
+    <div class="info-row">
+      <div class="info-row-left">
+        <div class="info-icon icon-blue">🌍</div>
+        <div>
+          <div class="info-key">Pressione Barometrica</div>
+          <div class="info-key-sub">PID 01 33</div>
+          <div class="info-key-range">
+            🔵 Riferimento <b>101.3 kPa</b> (mare)<br>
+            A quota alta il ΔP DPF risulta artificialmente più basso
+          </div>
+        </div>
+      </div>
+      <div class="info-right">
+        <div class="info-val">101.3 kPa</div>
+        <div class="info-status" style="color:var(--text-muted)">~0 m slm</div>
+      </div>
+    </div>
+
+    <div class="info-row">
+      <div class="info-row-left">
+        <div class="info-icon icon-warn">⛽</div>
+        <div>
+          <div class="info-key">Carburante nell'Olio</div>
+          <div class="info-key-sub">PID 22 05xx · da confermare</div>
+          <div class="info-key-range">
+            🟢 <b>&lt;1%</b> normale (post-injection DPF)<br>
+            🟡 <b>1–3%</b> → pianifica cambio olio<br>
+            🔴 <b>&gt;3%</b> → cambio olio urgente
+          </div>
+        </div>
+      </div>
+      <div class="info-right">
+        <div class="info-val ok">0.3 %</div>
+        <div class="info-status" style="color:var(--ok)">Normale</div>
+      </div>
+    </div>
+
+    <div class="info-row">
+      <div class="info-row-left">
+        <div class="info-icon icon-red">⚠️</div>
+        <div>
+          <div class="info-key">DTC Storici Resettati</div>
+          <div class="info-key-sub">PID 01 01</div>
+          <div class="info-key-range">
+            Numero di fault code mai cancellati dall'ECU.<br>
+            Non indica problemi attivi.
+          </div>
+        </div>
+      </div>
+      <div class="info-right">
+        <div class="info-val">2</div>
+        <div class="info-status" style="color:var(--text-muted)">Nessun DTC attivo</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       PRESSIONE GOMME
+  ══════════════════════════════════════ -->
+  <div class="section-label">Pressione Gomme</div>
+
+  <div class="info-card">
+    <div class="info-row">
+      <div class="info-row-left">
+        <div class="info-icon icon-warn">🔍</div>
+        <div>
+          <div class="info-key">TPMS da verificare</div>
+          <div class="info-key-sub">dipende dal tipo di TPMS installato</div>
+          <div class="info-key-range" style="margin-top:6px;line-height:1.7">
+            🔵 <b>TPMS diretto</b> → pressioni reali in bar<br>
+            ⚫ <b>TPMS indiretto</b> → solo warning on/off<br>
+            <span style="color:var(--accent)">Connetti OBD per rilevare il tipo →</span>
+          </div>
+        </div>
+      </div>
+      <div class="info-right">
+        <div style="font-size:11px;font-weight:700;color:var(--warn)">Da scansire</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

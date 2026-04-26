@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=390, initial-scale=1.0"/>
+<title>DPF Monitor — UI Preview</title>
+<style>
+  :root {
+    --bg:          #080808;
+    --surface:     #111111;
+    --surface2:    #181818;
+    --border:      #222222;
+    --accent:      #4F8EF7;
+    --accent-dim:  #1a1a1a;
+    --ok:          #34C759;
+    --warn:        #FF9F0A;
+    --danger:      #FF3B30;
+    --text:        #F0F0F5;
+    --text-muted:  #6E6E8A;
+    --text-label:  #9898B0;
+    --orange:      #FF6B2B;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .phone {
+    width: 390px;
+    min-height: 100vh;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    padding-bottom: 24px;
+    position: relative;
+  }
+
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 20px 12px;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .app-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent-dim);
+  }
+  .app-icon img {
+    width: 40px; height: 40px;
+    object-fit: cover;
+    border-radius: 12px;
+    filter: grayscale(1);
+  }
+  .app-name {
+    font-size: 17px; font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .app-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .version-badge {
+    font-size: 11px; font-weight: 600;
+    color: var(--accent);
+    background: rgba(79,142,247,0.12);
+    border: 1px solid rgba(79,142,247,0.25);
+    border-radius: 6px;
+    padding: 3px 8px;
+  }
+
+  /* ── Connection bar ── */
+  .conn-bar {
+    margin: 12px 16px 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .conn-left { display: flex; align-items: center; gap: 10px; }
+  .conn-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; } 50% { opacity:0.5; }
+  }
+  .conn-label { font-size: 13px; font-weight: 600; color: var(--ok); }
+  .conn-device { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .dtc-badge {
+    font-size: 11px; font-weight: 700;
+    color: var(--ok);
+    background: rgba(52,199,89,0.1);
+    border: 1px solid rgba(52,199,89,0.2);
+    border-radius: 6px;
+    padding: 3px 10px;
+  }
+
+  /* ── Section label ── */
+  .section-label {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-muted);
+    padding: 16px 20px 6px;
+  }
+
+  /* ── Cards grid ── */
+  .cards-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 0 16px;
+    margin-bottom: 10px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .card.full { grid-column: 1 / -1; }
+  .card.accent-border { border-color: var(--accent-dim); }
+
+  .card-label {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .card-value {
+    font-size: 32px; font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.5px;
+  }
+  .card-unit {
+    font-size: 14px; font-weight: 500;
+    color: var(--text-muted);
+    margin-left: 2px;
+  }
+  .card-sub {
+    font-size: 11px; color: var(--text-muted);
+    margin-top: 5px;
+  }
+
+  /* progress bar */
+  .bar-wrap {
+    height: 5px;
+    background: var(--surface2);
+    border-radius: 3px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
+  /* color variants */
+  .ok    { color: var(--ok); }
+  .warn  { color: var(--warn); }
+  .danger{ color: var(--danger); }
+  .accent{ color: var(--accent); }
+
+  .bar-ok     { background: var(--ok); }
+  .bar-warn   { background: var(--warn); }
+  .bar-danger { background: var(--danger); }
+
+  /* ── Regen status banner ── */
+  .regen-banner {
+    margin: 0 16px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .regen-left { display: flex; align-items: center; gap: 12px; }
+  .regen-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: rgba(52,199,89,0.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .regen-title { font-size: 13px; font-weight: 700; color: var(--ok); }
+  .regen-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .regen-strat {
+    font-size: 10px; font-weight: 600;
+    color: var(--text-muted);
+    background: var(--surface2);
+    border-radius: 5px;
+    padding: 3px 7px;
+  }
+
+  /* ── Full-width info rows (distances) ── */
+  .info-card {
+    margin: 0 16px 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-row-left { display: flex; align-items: center; gap: 10px; }
+  .info-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .icon-blue  { background: rgba(79,142,247,0.15); }
+  .icon-green { background: rgba(52,199,89,0.12); }
+  .icon-orange{ background: rgba(255,107,43,0.15); }
+  .info-key { font-size: 13px; font-weight: 500; color: var(--text-label); }
+  .info-key-sub { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+  .info-val { font-size: 15px; font-weight: 700; color: var(--text); }
+
+  /* ── Scan button ── */
+  .btn-area { padding: 4px 16px 0; }
+  .btn-scan {
+    width: 100%;
+    padding: 15px;
+    background: var(--accent);
+    border: none;
+    border-radius: 14px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-scan:active { opacity: 0.85; }
+  .btn-ecu {
+    width: 100%;
+    padding: 13px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  /* ── Tab bar ── */
+  .tab-bar {
+    display: flex;
+    padding: 6px 16px 10px;
+    gap: 6px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .tab-item {
+    flex: 1;
+    padding: 9px 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 10px;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+  }
+  .tab-item.active {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+  }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--border); margin: 2px 16px 0; }
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="app-icon">
+        <img src="ford_icon.png" alt="icon"/>
+      </div>
+      <div>
+        <div class="app-name">DPF Monitor</div>
+        <div class="app-sub">Ford Focus 1.5 TDCi · EDC17C70</div>
+      </div>
+    </div>
+    <div class="version-badge">v2.2</div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="tab-bar">
+    <a href="index.html" class="tab-item active">🔍 Monitor</a>
+    <a href="page2.html" class="tab-item">📡 Diagnostica</a>
+    <a href="page3.html" class="tab-item">📋 Storico</a>
+  </div>
+
+  <!-- Connection bar -->
+  <div class="conn-bar">
+    <div class="conn-left">
+      <div class="conn-dot"></div>
+      <div>
+        <div class="conn-label">Connesso</div>
+        <div class="conn-device">Android-Vlink 13:E0:2F:8D:4F:38</div>
+      </div>
+    </div>
+    <div class="dtc-badge">DTC 0</div>
+  </div>
+
+  <!-- DPF Section -->
+  <div class="section-label">DPF Status</div>
+
+  <div class="cards-grid">
+    <!-- Soot -->
+    <div class="card">
+      <div class="card-label">Soot</div>
+      <div>
+        <span class="card-value ok">14</span><span class="card-unit">%</span>
+      </div>
+      <div class="card-sub">anello aperto · 22 057B</div>
+      <div class="bar-wrap">
+        <div class="bar-fill bar-ok" style="width:4.4%"></div>
+      </div>
+    </div>
+
+    <!-- Load -->
+    <div class="card">
+      <div class="card-label">Load</div>
+      <div>
+        <span class="card-value ok">1</span><span class="card-unit">%</span>
+      </div>
+      <div class="card-sub">anello chiuso · 22 0579</div>
+      <div class="bar-wrap">
+        <div class="bar-fill bar-ok" style="width:0.3%"></div>
+      </div>
+    </div>
+
+    <!-- Delta P -->
+    <div class="card full">
+      <div class="card-label">Pressione Differenziale DPF</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <div>
+          <span class="card-value ok">0.00</span><span class="card-unit">kPa</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:var(--text-muted)">idle ~0 kPa</div>
+          <div style="font-size:11px;color:var(--text-muted)">cruise 5–15 kPa</div>
+        </div>
+      </div>
+      <div class="bar-wrap" style="margin-top:12px">
+        <div class="bar-fill bar-ok" style="width:0%"></div>
+      </div>
+      <div class="card-sub" style="margin-top:6px">PID 01 7A · SAE J1979 · confermato</div>
+    </div>
+  </div>
+
+  <!-- Regen Status -->
+  <div class="section-label">Rigenerazione</div>
+  <div class="regen-banner">
+    <div class="regen-left">
+      <div class="regen-icon">✅</div>
+      <div>
+        <div class="regen-title">Nessuna rigenerazione</div>
+        <div class="regen-desc">EGT sotto soglia · Sicuro spegnere</div>
+      </div>
+    </div>
+    <div class="regen-strat">EGT</div>
+  </div>
+
+  <!-- Temperatures -->
+  <div class="section-label">Temperature</div>
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-label">EGT</div>
+      <div>
+        <span class="card-value">100</span><span class="card-unit">°C</span>
+      </div>
+      <div class="card-sub">PID 01 78</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Coolant</div>
+      <div>
+        <span class="card-value">31</span><span class="card-unit">°C</span>
+      </div>
+      <div class="card-sub">PID 01 05</div>
+    </div>
+  </div>
+
+  <!-- Distances -->
+  <div class="section-label">Distanze</div>
+  <div class="info-card">
+    <div class="info-row">
+      <div class="info-row-left">
+        <div class="info-icon icon-blue">📍</div>
+        <div>
+          <div class="info-key">Odometro</div>
+          <div class="info-key-sub">ECU · PID 22 DD01</div>
+        </div>
+      </div>
+      <div class="info-val">154.022 km</div>
+    </div>
+    <div class="info-row">
+      <div class="info-row-left">
+        <div class="info-icon icon-green">♻️</div>
+        <div>
+          <div class="info-key">Ultima rigenerazione</div>
+          <div class="info-key-sub">ECU · PID 22 050B</div>
+        </div>
+      </div>
+      <div class="info-val">411 km fa</div>
+    </div>
+    <div class="info-row">
+      <div class="info-row-left">
+        <div class="info-icon icon-orange">🛢️</div>
+        <div>
+          <div class="info-key">Cambio olio</div>
+          <div class="info-key-sub">ECU · PID 22 0542</div>
+        </div>
+      </div>
+      <div class="info-val accent">8.979 km</div>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="btn-area">
+    <button class="btn-ecu">🔍 &nbsp;Scan ECU PIDs</button>
+  </div>
+
+</div>
+</body>
+</html>
