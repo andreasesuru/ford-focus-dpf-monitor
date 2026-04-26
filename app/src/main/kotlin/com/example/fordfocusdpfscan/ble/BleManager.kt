@@ -135,8 +135,8 @@ class BleManager(private val context: Context) {
 
         // ── Timing ────────────────────────────────────────────────────────────
         private const val COMMAND_TIMEOUT_MS      = 3000L
-        private const val INTER_COMMAND_DELAY_MS  = 300L
-        private const val INTER_CYCLE_DELAY_MS    = 1000L
+        private const val INTER_COMMAND_DELAY_MS  = 100L   // was 300 — ~1.5s full cycle
+        private const val INTER_CYCLE_DELAY_MS    = 200L   // was 1000 — 100×13 + 200 = 1500ms/cycle
         private const val ELM_INIT_TIMEOUT_MS     = 4000L
         private const val ELM_CMD_TIMEOUT_MS      = 1500L
 

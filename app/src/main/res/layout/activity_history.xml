@@ -10,6 +10,29 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
+    <!-- ── Body content (slides during tab transitions) ─────────────────── -->
+    <LinearLayout
+        android:id="@+id/contentBody"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+    <!-- ── Mock data banner — visible only when showing demo sessions ────── -->
+    <TextView
+        android:id="@+id/tvMockBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="👁  DATI DI ESEMPIO — nessuna rigenerazione reale ancora registrata"
+        android:textColor="#000000"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:paddingVertical="8dp"
+        android:paddingHorizontal="16dp"
+        android:background="#FFFF9F0A"
+        android:visibility="gone"/>
+
     <!-- ── Stats bar ────────────────────────────────────────────────────── -->
     <LinearLayout
         android:id="@+id/layoutStats"
@@ -176,5 +199,7 @@
         android:layout_weight="1"
         android:clipToPadding="false"
         android:paddingBottom="16dp"/>
+
+    </LinearLayout><!-- end contentBody -->
 
 </LinearLayout>

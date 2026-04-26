@@ -229,23 +229,7 @@ class MainActivity : BaseTabActivity() {
             startActivity(Intent(this, EcuScanActivity::class.java))
         }
 
-        // ── Tab bar navigation ────────────────────────────────────────────────
-        // tabMonitor is already active — highlight it via findViewById (include without id
-        // is not directly accessible through ViewBinding)
-        findViewById<android.widget.TextView>(R.id.tabMonitor).apply {
-            setBackgroundResource(R.drawable.bg_tab_active)
-            setTextColor(getColor(R.color.text_primary))
-        }
-        findViewById<android.view.View>(R.id.tabDiagnostica).setOnClickListener {
-            startActivity(Intent(this, DiagnosticaActivity::class.java))
-            overridePendingTransition(0, 0)
-            finish()
-        }
-        findViewById<android.view.View>(R.id.tabStorico).setOnClickListener {
-            startActivity(Intent(this, HistoryActivity::class.java))
-            overridePendingTransition(0, 0)
-            finish()
-        }
+        // Tab bar highlighting + click listeners are handled centrally by BaseTabActivity.
 
         // Oil change km and last regen km are now read live from ECU —
         // no manual input needed.

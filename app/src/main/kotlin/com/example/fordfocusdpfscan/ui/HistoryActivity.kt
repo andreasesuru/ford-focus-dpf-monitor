@@ -41,6 +41,50 @@ class HistoryActivity : BaseTabActivity() {
     private lateinit var historyRepo: RegenHistoryRepository
     private lateinit var adapter: SessionAdapter
 
+    // ── Mock sessions shown when DB is empty ──────────────────────────────────
+    private val mockSessions: List<RegenSession> by lazy {
+        val now = System.currentTimeMillis()
+        val day = 86_400_000L
+        listOf(
+            RegenSession(
+                id = -1, startTimestamp = now - 90 * day, endTimestamp = now - 90 * day + 28 * 60_000,
+                preOdometerKm = 151_340, preSootPct = 72f, preLoadPct = 68f,
+                preDeltaPKpa = 12.4f, preEgtC = 198f, preCoolantC = 88f,
+                peakEgtC = 683f, peakDeltaPKpa = 18.2f,
+                postSootPct = 18f, postLoadPct = 14f, postOdometerKm = 151_358,
+                postEgtC = 312f, postCoolantC = 91f,
+                durationMinutes = 28, regenType = "ACTIVE", result = "COMPLETED"
+            ),
+            RegenSession(
+                id = -2, startTimestamp = now - 55 * day, endTimestamp = now - 55 * day + 24 * 60_000,
+                preOdometerKm = 152_108, preSootPct = 65f, preLoadPct = 61f,
+                preDeltaPKpa = 10.8f, preEgtC = 211f, preCoolantC = 87f,
+                peakEgtC = 671f, peakDeltaPKpa = 16.5f,
+                postSootPct = 12f, postLoadPct = 9f, postOdometerKm = 152_127,
+                postEgtC = 298f, postCoolantC = 90f,
+                durationMinutes = 24, regenType = "ACTIVE", result = "COMPLETED"
+            ),
+            RegenSession(
+                id = -3, startTimestamp = now - 28 * day, endTimestamp = now - 28 * day + 9 * 60_000,
+                preOdometerKm = 152_944, preSootPct = 58f, preLoadPct = 54f,
+                preDeltaPKpa = 9.1f, preEgtC = 176f, preCoolantC = 84f,
+                peakEgtC = 447f, peakDeltaPKpa = 11.3f,
+                postSootPct = null, postLoadPct = null, postOdometerKm = null,
+                postEgtC = null, postCoolantC = null,
+                durationMinutes = 9, regenType = "WARNING", result = "INTERRUPTED"
+            ),
+            RegenSession(
+                id = -4, startTimestamp = now - 14 * day, endTimestamp = now - 14 * day + 31 * 60_000,
+                preOdometerKm = 153_512, preSootPct = 71f, preLoadPct = 67f,
+                preDeltaPKpa = 13.6f, preEgtC = 203f, preCoolantC = 89f,
+                peakEgtC = 689f, peakDeltaPKpa = 19.1f,
+                postSootPct = 15f, postLoadPct = 11f, postOdometerKm = 153_538,
+                postEgtC = 321f, postCoolantC = 92f,
+                durationMinutes = 31, regenType = "ACTIVE", result = "COMPLETED"
+            )
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_history)
@@ -56,39 +100,31 @@ class HistoryActivity : BaseTabActivity() {
         // ── Observe sessions ──────────────────────────────────────────────────
         lifecycleScope.launch {
             historyRepo.sessions.collectLatest { sessions ->
-                adapter.submitList(sessions)
-
-                // Show/hide empty state
+                val mockBanner = findViewById<View>(R.id.tvMockBanner)
                 val emptyView  = findViewById<View>(R.id.viewEmptyState)
                 val statsGroup = findViewById<View>(R.id.layoutStats)
-                val isEmpty    = sessions.isEmpty()
-                emptyView.visibility  = if (isEmpty) View.VISIBLE else View.GONE
-                statsGroup.visibility = if (isEmpty) View.GONE   else View.VISIBLE
 
-                if (sessions.isNotEmpty()) {
+                if (sessions.isEmpty()) {
+                    // Show mock data so the layout is always visible
+                    mockBanner.visibility = View.VISIBLE
+                    emptyView.visibility  = View.GONE
+                    statsGroup.visibility = View.VISIBLE
+                    adapter.submitList(mockSessions)
+                    updateStats(mockSessions)
+                    updateSootChart(mockSessions)
+                } else {
+                    // Real data — hide mock banner
+                    mockBanner.visibility = View.GONE
+                    emptyView.visibility  = View.GONE
+                    statsGroup.visibility = View.VISIBLE
+                    adapter.submitList(sessions)
                     updateStats(sessions)
                     updateSootChart(sessions)
                 }
             }
         }
 
-        // ── Tab bar navigation ────────────────────────────────────────────────
-        // Mark this tab as active
-        findViewById<TextView>(R.id.tabStorico).apply {
-            setBackgroundResource(R.drawable.bg_tab_active)
-            setTextColor(getColor(R.color.text_primary))
-        }
-
-        findViewById<View>(R.id.tabMonitor).setOnClickListener {
-            startActivity(Intent(this, MainActivity::class.java))
-            overridePendingTransition(0, 0)
-            finish()
-        }
-        findViewById<View>(R.id.tabDiagnostica).setOnClickListener {
-            startActivity(Intent(this, DiagnosticaActivity::class.java))
-            overridePendingTransition(0, 0)
-            finish()
-        }
+        // Tab bar highlighting + click listeners handled centrally by BaseTabActivity.
 
         // ── Export button ─────────────────────────────────────────────────────
         findViewById<View>(R.id.btnExport).setOnClickListener {
@@ -254,6 +290,22 @@ class HistoryActivity : BaseTabActivity() {
                 v.findViewById<TextView>(R.id.tvSessionOdo).text   =
                     if (s.preOdometerKm >= 0) "📍 %,d km · ${s.durationMinutes ?: "—"} min".format(s.preOdometerKm)
                     else "📍 — · ${s.durationMinutes ?: "—"} min"
+
+                // Regen type badge
+                val tvType = v.findViewById<TextView>(R.id.tvRegenType)
+                when (s.regenType) {
+                    "ACTIVE"  -> {
+                        tvType.text = "🔴  Forzata · ECU"
+                        tvType.setTextColor(0xFFFF6B6B.toInt())
+                        tvType.setBackgroundColor(0x22FF3B30)
+                    }
+                    "WARNING" -> {
+                        tvType.text = "🌡  Passiva · temperatura"
+                        tvType.setTextColor(0xFF4F8EF7.toInt())
+                        tvType.setBackgroundColor(0x224F8EF7)
+                    }
+                    else -> tvType.text = ""
+                }
 
                 // Soot before → after
                 val sootPre  = if (s.preSootPct  >= 0) "${"%.0f".format(s.preSootPct)}%" else "—"

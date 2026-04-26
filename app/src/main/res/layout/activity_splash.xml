@@ -52,8 +52,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Ford Focus 1.5 TDCi · EDC17C70"
-        android:textColor="#003478"
-        android:textSize="13sp"
+        android:textColor="#4F8EF7"
+        android:textSize="15sp"
         android:letterSpacing="0.04"
         android:alpha="0"
         android:layout_marginTop="6dp"
@@ -62,12 +62,12 @@
         app:layout_constraintTop_toBottomOf="@id/splashTitle"
         app:layout_constraintBottom_toBottomOf="parent"/>
 
-    <!-- Thin Ford Blue line above credits -->
+    <!-- Thin accent line above credits -->
     <View
         android:id="@+id/splashDivider"
         android:layout_width="48dp"
         android:layout_height="1dp"
-        android:background="#003478"
+        android:background="#4F8EF7"
         android:alpha="0"
         android:layout_marginBottom="12dp"
         app:layout_constraintEnd_toEndOf="parent"
@@ -80,8 +80,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Developed by Andrea Sesuru"
-        android:textColor="#3A4A5C"
-        android:textSize="11sp"
+        android:textColor="#6A7D90"
+        android:textSize="13sp"
         android:letterSpacing="0.04"
         android:alpha="0"
         android:layout_marginBottom="32dp"

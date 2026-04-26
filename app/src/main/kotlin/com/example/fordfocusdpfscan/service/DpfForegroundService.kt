@@ -59,6 +59,12 @@ class DpfForegroundService : LifecycleService() {
     private var lastDataPointTime = 0L
     private val DATA_POINT_INTERVAL_MS = 30_000L
 
+    // ── Oil change reminder — fire once per threshold crossing ────────────────
+    /** km threshold that triggers the reminder notification. */
+    private val OIL_CHANGE_WARN_KM = 10_000L
+    /** True once the notification has been sent; reset when oil is changed (km drops). */
+    private var oilChangeNotifSent = false
+
     // ═════════════════════════════════════════════════════════════════════════
     // Service lifecycle
     // ═════════════════════════════════════════════════════════════════════════
@@ -140,13 +146,24 @@ class DpfForegroundService : LifecycleService() {
             DpfRepository.dpfData.collectLatest { data ->
                 // Update the persistent "monitoring" notification with latest values
                 val updatedNotif = NotificationHelper.buildPersistentNotification(
-                    context    = this@DpfForegroundService,
-                    dpfData    = data
+                    context = this@DpfForegroundService,
+                    dpfData = data
                 )
                 NotificationHelper.updatePersistentNotification(
                     this@DpfForegroundService,
                     updatedNotif
                 )
+
+                // ── Oil change reminder ───────────────────────────────────────
+                // Fire once when km ≥ 10.000; reset flag if km drops (oil changed).
+                val km = data.kmSinceOilChange
+                if (km >= OIL_CHANGE_WARN_KM && !oilChangeNotifSent) {
+                    oilChangeNotifSent = true
+                    NotificationHelper.notifyOilChangeReminder(this@DpfForegroundService, km)
+                } else if (km in 0L until (OIL_CHANGE_WARN_KM - 1000L)) {
+                    // km dropped well below threshold → oil was changed, allow re-notify
+                    oilChangeNotifSent = false
+                }
             }
         }
     }

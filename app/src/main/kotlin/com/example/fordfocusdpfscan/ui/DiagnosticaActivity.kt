@@ -1,6 +1,5 @@
 package com.example.fordfocusdpfscan.ui
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView
@@ -39,25 +38,31 @@ class DiagnosticaActivity : BaseTabActivity() {
         val label: TextView = root.findViewById(R.id.tvCellLabel)
         val value: TextView = root.findViewById(R.id.tvCellValue)
         val unit:  TextView = root.findViewById(R.id.tvCellUnit)
-        val pid:   TextView = root.findViewById(R.id.tvCellPid)
+        val hint:  TextView = root.findViewById(R.id.tvCellHint)
+        val bar:   View     = root.findViewById(R.id.vCellStatusBar)
 
-        fun setup(labelText: String, unitText: String, pidText: String) {
+        fun setup(labelText: String, unitText: String, hintText: String) {
             label.text = labelText
             unit.text  = unitText
-            pid.text   = pidText
+            hint.text  = hintText
             value.text = "—"
+            bar.setBackgroundColor(0xFF1E2A3A.toInt())   // default muted
         }
 
         fun set(v: Float, decimals: Int = 0, pendingText: String = "—") {
             value.text = if (v < 0f) pendingText
-                         else "%.*f".format(decimals, v)
+                         else "%.${decimals}f".format(v)
         }
 
         fun setLong(v: Long, pendingText: String = "—") {
             value.text = if (v < 0L) pendingText else "%,d".format(v)
         }
 
-        fun setColor(color: Int) { value.setTextColor(color) }
+        /** Colors both the value text and the bottom status bar. */
+        fun setColor(color: Int) {
+            value.setTextColor(color)
+            bar.setBackgroundColor(color)
+        }
     }
 
     // ── Cell references (bound after setContentView) ──────────────────────────
@@ -74,17 +79,10 @@ class DiagnosticaActivity : BaseTabActivity() {
     private lateinit var cEngLoad:  Cell
     private lateinit var cBoost:    Cell
     private lateinit var cCoolant:  Cell
-    private lateinit var cOilTemp:  Cell
     // Distanze
     private lateinit var cKmRegen:  Cell
     private lateinit var cKmOil:    Cell
     private lateinit var cOdometer: Cell
-    private lateinit var cBaro:     Cell
-    // In attesa
-    private lateinit var cAsh:      Cell
-    private lateinit var cEgr:      Cell
-    private lateinit var cRegenCnt: Cell
-    private lateinit var cFuelDil:  Cell
 
     // ── Connection banner ─────────────────────────────────────────────────────
     private lateinit var notConnectedBanner: View
@@ -103,11 +101,9 @@ class DiagnosticaActivity : BaseTabActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_diagnostica)
-
         notConnectedBanner = findViewById(R.id.tvNotConnectedBanner)
         bindCells()
         setupLabels()
-        setupTabBar()
         observeData()
     }
 
@@ -128,43 +124,29 @@ class DiagnosticaActivity : BaseTabActivity() {
         cEngLoad  = Cell(findViewById(R.id.cellEngineLoad))
         cBoost    = Cell(findViewById(R.id.cellBoost))
         cCoolant  = Cell(findViewById(R.id.cellCoolant))
-        cOilTemp  = Cell(findViewById(R.id.cellOilTemp))
 
         cKmRegen  = Cell(findViewById(R.id.cellKmRegen))
         cKmOil    = Cell(findViewById(R.id.cellKmOil))
         cOdometer = Cell(findViewById(R.id.cellOdometer))
-        cBaro     = Cell(findViewById(R.id.cellBaro))
-
-        cAsh      = Cell(findViewById(R.id.cellAshLevel))
-        cEgr      = Cell(findViewById(R.id.cellEgr))
-        cRegenCnt = Cell(findViewById(R.id.cellRegenCounter))
-        cFuelDil  = Cell(findViewById(R.id.cellFuelDilution))
     }
 
     private fun setupLabels() {
-        cSoot    .setup("SOOT %",        "%",    "PID 22 057B")
-        cLoad    .setup("LOAD %",         "%",   "PID 22 0579")
-        cDeltaP  .setup("DELTA P",        "kPa", "PID 01 7A")
-        cEgtPre  .setup("EGT INGRESSO",   "°C",  "PID 01 78 S1")
-        cEgtPost .setup("EGT USCITA",     "°C",  "PID 01 78 S2")
-        cDeltaEgt.setup("ΔT EGT",         "°C",  "Pre − Post")
+        cSoot    .setup("SOOT",          "%",    "normale < 50% · critico > 80%")
+        cLoad    .setup("LOAD DPF",      "%",    "normale < 50% · critico > 80%")
+        cDeltaP  .setup("DELTA P",       "kPa",  "idle ~0 · marcia 5-15 kPa")
+        cEgtPre  .setup("EGT INGRESSO",  "°C",   "normale < 500°C · regen 600-700°C")
+        cEgtPost .setup("EGT USCITA",    "°C",   "normale < 500°C")
+        cDeltaEgt.setup("ΔT EGT",        "°C",   "< 0 = regen attiva · < −50 = regen intensa")
 
-        cRpm    .setup("RPM",             "rpm", "PID 01 0C")
-        cSpeed  .setup("VELOCITÀ",        "km/h","PID 01 0D")
-        cEngLoad.setup("ENGINE LOAD",     "%",   "PID 01 04")
-        cBoost  .setup("BOOST",           "bar", "PID 01 0B")
-        cCoolant.setup("REFRIGERANTE",    "°C",  "PID 01 05")
-        cOilTemp.setup("OLIO",            "°C",  "PID 01 5C")
+        cRpm    .setup("RPM",            "rpm",  "minimo ~800 · normale 1.000-3.000")
+        cSpeed  .setup("VELOCITÀ",       "km/h", "")
+        cEngLoad.setup("CARICO MOTORE",  "%",    "normale < 60% · alto > 85%")
+        cBoost  .setup("BOOST",          "bar",  "normale 0-1,5 bar")
+        cCoolant.setup("REFRIGERANTE",   "°C",   "ottimale 70-110°C")
 
-        cKmRegen .setup("KM DA REGEN",    "km",  "PID 22 050B")
-        cKmOil   .setup("KM DA TAGLIANDO","km",  "PID 22 0542")
-        cOdometer.setup("ODOMETRO",       "km",  "PID 22 DD01")
-        cBaro    .setup("PRESSIONE BARO", "kPa", "PID 01 33")
-
-        cAsh    .setup("ASH LEVEL",       "%",   "PID 22 0578")
-        cEgr    .setup("EGR RATE",        "%",   "PID 22 0583")
-        cRegenCnt.setup("TOT. REGEN",     "",    "PID 22 05xx")
-        cFuelDil.setup("FUEL IN OIL",     "%",   "PID 22 05xx")
+        cKmRegen .setup("KM DA REGEN",   "km",   "intervallo tipico 400-600 km")
+        cKmOil   .setup("KM TAGLIANDO",  "km",   "cambio olio ogni 10-12.000 km")
+        cOdometer.setup("ODOMETRO",      "km",   "chilometri totali dalla ECU")
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -174,10 +156,8 @@ class DiagnosticaActivity : BaseTabActivity() {
     private fun observeData() {
         lifecycleScope.launch {
             DpfRepository.dpfData.collectLatest { data ->
-                // Show/hide "not connected" banner
                 notConnectedBanner.visibility =
                     if (data.bleConnected) View.GONE else View.VISIBLE
-
                 updateDpfSection(data)
                 updateEngineSection(data)
                 updateDistanceSection(data)
@@ -292,14 +272,6 @@ class DiagnosticaActivity : BaseTabActivity() {
             else                  -> colorDanger
         })
 
-        // Oil temp
-        cOilTemp.set(d.oilTempC, 0)
-        cOilTemp.setColor(when {
-            d.oilTempC < 0f   -> colorMuted
-            d.oilTempC < 80f  -> colorWarn
-            d.oilTempC < 115f -> colorOk
-            else              -> colorDanger
-        })
     }
 
     private fun updateDistanceSection(d: DpfData) {
@@ -314,39 +286,14 @@ class DiagnosticaActivity : BaseTabActivity() {
         cKmOil.setLong(d.kmSinceOilChange)
         cKmOil.setColor(when {
             d.kmSinceOilChange < 0L     -> colorMuted
-            d.kmSinceOilChange < 8000L  -> colorOk
-            d.kmSinceOilChange < 10000L -> colorWarn
-            else                        -> colorDanger
+            d.kmSinceOilChange < 9000L  -> colorOk
+            d.kmSinceOilChange < 11000L -> colorWarn   // 9k–11k: avviso imminente
+            else                        -> colorDanger  // >11k: scaduto
         })
 
         cOdometer.setLong(d.odometerKm)
         cOdometer.setColor(if (d.odometerKm < 0L) colorMuted else colorPrimary)
-
-        cBaro.set(d.baroKpa, 0)
-        cBaro.setColor(if (d.baroKpa < 0f) colorMuted else colorPrimary)
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Tab bar navigation
-    // ═════════════════════════════════════════════════════════════════════════
-
-    private fun setupTabBar() {
-        // Mark this tab as active
-        findViewById<TextView>(R.id.tabDiagnostica).apply {
-            setBackgroundResource(R.drawable.bg_tab_active)
-            setTextColor(getColor(R.color.text_primary))
-        }
-
-        // Navigate to other tabs
-        findViewById<View>(R.id.tabMonitor).setOnClickListener {
-            startActivity(Intent(this, MainActivity::class.java))
-            overridePendingTransition(0, 0)
-            finish()
-        }
-        findViewById<View>(R.id.tabStorico).setOnClickListener {
-            startActivity(Intent(this, HistoryActivity::class.java))
-            overridePendingTransition(0, 0)
-            finish()
-        }
-    }
+    // Tab bar highlighting + click listeners are handled centrally by BaseTabActivity.
 }

@@ -43,11 +43,13 @@ object NotificationHelper {
     const val NOTIF_ID_PERSISTENT  = 1001
     const val NOTIF_ID_EVENT       = 1002
     const val NOTIF_ID_CONNECTION  = 1003
+    const val NOTIF_ID_SERVICE     = 1004   // tagliando / service reminder
 
     // ── Channel IDs ───────────────────────────────────────────────────────────
     private const val CHANNEL_PERSISTENT  = "focus_persistent"
     private const val CHANNEL_REGEN       = "focus_regen"        // custom MP3 sound
     private const val CHANNEL_CONNECTION  = "focus_connection"   // silent
+    private const val CHANNEL_SERVICE     = "focus_service"      // silent, service reminders
 
     // ── Notification timeout ──────────────────────────────────────────────────
     private const val EVENT_TIMEOUT_MS = 5_000L   // heads-up dismisses after 5 s
@@ -114,7 +116,18 @@ object NotificationHelper {
             enableVibration(false)
         }
 
-        manager.createNotificationChannels(listOf(persistentChannel, regenChannel, connectionChannel))
+        // ── Channel 4: Service reminders (silent popup — no sound) ───────────
+        val serviceChannel = NotificationChannel(
+            CHANNEL_SERVICE,
+            "Promemoria tagliando",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Promemoria per prenotare il tagliando dal meccanico"
+            setSound(null, null)
+            enableVibration(false)
+        }
+
+        manager.createNotificationChannels(listOf(persistentChannel, regenChannel, connectionChannel, serviceChannel))
         Log.d(TAG, "Notification channels created")
     }
 
@@ -220,6 +233,38 @@ object NotificationHelper {
             color = Color.parseColor("#2E7D32")   // green
         )
         Log.d(TAG, "✅ BLE connected notification posted (silent)")
+    }
+
+    /**
+     * Promemoria tagliando — si attiva quando km dall'ultimo cambio olio ≥ 10.000.
+     * Silenziosa (niente suono), rimane fino a dismiss manuale.
+     */
+    fun notifyOilChangeReminder(context: Context, kmSinceOilChange: Long) {
+        val tapIntent = PendingIntent.getActivity(
+            context, 0,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_SERVICE)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("🔧 Tagliando in scadenza")
+            .setContentText("Hai percorso %,d km dall'ultimo cambio olio — prenota dal meccanico.".format(kmSinceOilChange))
+            .setStyle(NotificationCompat.BigTextStyle()
+                .bigText("Hai percorso %,d km dall'ultimo cambio olio.\nSi consiglia di prenotare un tagliando entro breve.".format(kmSinceOilChange)))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setColor(0xFFFF9F0A.toInt())   // amber
+            .setColorized(true)
+            .setAutoCancel(false)          // resta nella tendina finché non si fa il tagliando
+            .setContentIntent(tapIntent)
+            .setSilent(true)
+            .build()
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIF_ID_SERVICE, notification)
+            Log.d(TAG, "🔧 Oil change reminder sent at ${kmSinceOilChange} km")
+        } catch (e: SecurityException) {
+            Log.e(TAG, "POST_NOTIFICATIONS permission not granted: ${e.message}")
+        }
     }
 
     // ─── Private factories ────────────────────────────────────────────────────

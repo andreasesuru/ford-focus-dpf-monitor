@@ -48,6 +48,19 @@
                 android:textColor="@color/text_secondary"
                 android:textSize="11sp"
                 android:layout_marginTop="2dp"/>
+
+            <!-- Regen type badge: ACTIVE = forzata ECU / WARNING = passiva temperatura -->
+            <TextView
+                android:id="@+id/tvRegenType"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:paddingHorizontal="7dp"
+                android:paddingVertical="2dp"
+                android:layout_marginTop="5dp"
+                android:background="@drawable/bg_tab_inactive"
+                android:textColor="@color/text_secondary"/>
         </LinearLayout>
 
         <TextView

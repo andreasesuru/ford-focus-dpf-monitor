@@ -20,6 +20,7 @@
     <!-- Declared before ScrollView but placed at bottom via layout_gravity  -->
 
     <ScrollView
+        android:id="@+id/contentBody"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -37,7 +38,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:visibility="gone"
-                android:text="v2.2" />
+                android:text="v2.5" />
 
             <!-- BLE Connection Card -->
             <com.google.android.material.card.MaterialCardView
@@ -625,39 +626,39 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Andrea Sesuru"
-                android:textColor="#3A4A5C"
-                android:textSize="10sp"/>
+                android:textColor="#6A7D90"
+                android:textSize="12sp"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=" · "
-                android:textColor="#3A4A5C"
-                android:textSize="10sp"/>
+                android:textColor="#6A7D90"
+                android:textSize="12sp"/>
 
             <TextView
                 android:id="@+id/tvFooterGithub"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="github.com/andreasesuru"
-                android:textColor="#003478"
-                android:textSize="10sp"
+                android:textColor="#4F8EF7"
+                android:textSize="12sp"
                 android:paddingVertical="4dp"/>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=" · "
-                android:textColor="#3A4A5C"
-                android:textSize="10sp"/>
+                android:textColor="#6A7D90"
+                android:textSize="12sp"/>
 
             <TextView
                 android:id="@+id/tvFooterVersion"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="v2.2"
-                android:textColor="#3A4A5C"
-                android:textSize="10sp"/>
+                android:text="v2.5"
+                android:textColor="#6A7D90"
+                android:textSize="12sp"/>
 
         </LinearLayout>
     </LinearLayout>
