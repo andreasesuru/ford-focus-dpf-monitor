@@ -8,7 +8,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -35,7 +34,9 @@ import java.util.*
 // Export button generates an HTML mechanic report and opens the share sheet.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-class HistoryActivity : AppCompatActivity() {
+class HistoryActivity : BaseTabActivity() {
+
+    override val tabIndex = 2
 
     private lateinit var historyRepo: RegenHistoryRepository
     private lateinit var adapter: SessionAdapter

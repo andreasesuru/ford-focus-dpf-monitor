@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.fordfocusdpfscan.R
 import com.example.fordfocusdpfscan.data.DpfData
@@ -31,7 +30,9 @@ import kotlinx.coroutines.launch
 //   tvCellPid    — PID reference (tiny, hint color)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-class DiagnosticaActivity : AppCompatActivity() {
+class DiagnosticaActivity : BaseTabActivity() {
+
+    override val tabIndex = 1
 
     // ── Cell handle ──────────────────────────────────────────────────────────
     private inner class Cell(root: View) {

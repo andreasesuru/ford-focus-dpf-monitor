@@ -20,7 +20,6 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.fordfocusdpfscan.R
@@ -49,7 +48,9 @@ import kotlinx.coroutines.launch
 // and BleManager — this activity is only the control panel and display.
 // ═══════════════════════════════════════════════════════════════════════════════
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseTabActivity() {
+
+    override val tabIndex = 0
 
     private lateinit var binding: ActivityMainBinding
 
