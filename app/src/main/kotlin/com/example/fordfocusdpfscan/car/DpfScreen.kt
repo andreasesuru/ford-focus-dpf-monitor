@@ -10,6 +10,7 @@ import com.example.fordfocusdpfscan.R
 import com.example.fordfocusdpfscan.data.DpfData
 import com.example.fordfocusdpfscan.data.DpfRepository
 import com.example.fordfocusdpfscan.data.RegenStatus
+import com.example.fordfocusdpfscan.data.RegenStrategy
 import com.example.fordfocusdpfscan.service.DpfForegroundService
 import android.content.Intent
 import android.text.SpannableString
@@ -20,70 +21,54 @@ import kotlinx.coroutines.flow.collectLatest
 // ═══════════════════════════════════════════════════════════════════════════════
 // DpfScreen.kt — Android Auto main dashboard screen.
 //
-// Renders a PaneTemplate with 4 data rows:
-//   Row 1 — DPF Load %              (colored by threshold)
-//   Row 2 — Regeneration Status     (colored by status)
-//   Row 3 — Temperatures            (Coolant + EGT, colored)
-//   Row 4 — History                 (Last regen km + last service km)
+// PaneTemplate — 4 rows:
+//   Row 1 — FILTRO DPF   → Soot % · Load %  /  Delta P kPa
+//   Row 2 — RIGENERAZIONE → Status (colored) / fonte (ECU flag o EGT)
+//   Row 3 — TEMPERATURE  → EGT °C (colored) / Refrig. °C (colored)
+//   Row 4 — DISTANZE     → km da regen / km da tagliando
 //
-// ActionStrip:
-//   [🔄 Reconnect] — top-right corner action, triggers BLE reconnect
+// ActionStrip: [Ricollega] — riconnette il dongle OBD2
 //
-// Update mechanism:
-//   A coroutine collects DpfRepository.dpfData StateFlow.
-//   On every emission, invalidate() is called so Android Auto re-calls
-//   onGetTemplate() with the latest data.
-//
-// CarToast:
-//   Fired for every status transition (WARNING, ACTIVE, COMPLETED, BLE lost).
-//   Shown simultaneously with the system notification heads-up.
+// Update: coroutine su DpfRepository.dpfData StateFlow → invalidate()
+// CarToast: su ogni transizione di stato (WARNING / ACTIVE / COMPLETED)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class DpfScreen(carContext: CarContext) : Screen(carContext) {
 
-    // Coroutine scope tied to the screen's lifecycle
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
-    // Track the previous regen status to detect transitions and show CarToast
     private var previousRegenStatus: RegenStatus = RegenStatus.INACTIVE
-
-    // Snapshot of the latest data — updated from the StateFlow collector
     private var currentData: DpfData = DpfData()
 
     init {
-        // ── Observe DpfRepository and call invalidate() on every update ────────
         scope.launch {
             DpfRepository.dpfData.collectLatest { data ->
-                // Detect status transitions to show CarToast in-car
                 if (data.regenStatus != previousRegenStatus) {
-                    showCarToast(previousRegenStatus, data.regenStatus)
+                    showCarToast(data.regenStatus)
                     previousRegenStatus = data.regenStatus
                 }
                 currentData = data
-                invalidate()  // tells Android Auto to call onGetTemplate() again
+                invalidate()
             }
         }
 
-        // Clean up scope when the screen is destroyed
         lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onDestroy(owner: LifecycleOwner) {
-                scope.cancel()
-            }
+            override fun onDestroy(owner: LifecycleOwner) { scope.cancel() }
         })
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Template — called by Android Auto on every invalidate()
+    // Template — chiamato da Android Auto ad ogni invalidate()
     // ═════════════════════════════════════════════════════════════════════════
 
     override fun onGetTemplate(): Template {
         val data = currentData
 
         val pane = Pane.Builder()
-            .addRow(buildLoadRow(data))
+            .addRow(buildDpfRow(data))
             .addRow(buildRegenRow(data))
-            .addRow(buildTemperaturesRow(data))
-            .addRow(buildHistoryRow(data))
+            .addRow(buildTempsRow(data))
+            .addRow(buildDistancesRow(data))
             .build()
 
         return PaneTemplate.Builder(pane)
@@ -94,114 +79,153 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Row builders
+    // Row 1 — FILTRO DPF: Soot % · Load %  |  Delta P kPa
     // ═════════════════════════════════════════════════════════════════════════
 
-    /** Row 1 — DPF Load percentage with color-coded value. */
-    private fun buildLoadRow(data: DpfData): Row {
-        val loadText: SpannableString = if (data.loadPercentage >= 0) {
-            val pct = data.loadPercentage.toInt()
+    private fun buildDpfRow(data: DpfData): Row {
+        // Soot + Load sulla stessa riga di testo
+        val sootLoad: SpannableString = run {
+            val soot = if (data.sootPercentage >= 0) "${data.sootPercentage.toInt()}%" else "– –"
+            val load = if (data.loadPercentage >= 0) "${data.loadPercentage.toInt()}%" else "– –"
+            // Colora in base al valore peggiore tra soot e load
+            val worst = maxOf(
+                data.sootPercentage.takeIf { it >= 0f } ?: 0f,
+                data.loadPercentage.takeIf { it >= 0f } ?: 0f
+            )
             val color = when {
-                pct < 60  -> CarColor.GREEN
-                pct < 80  -> CarColor.YELLOW
-                else      -> CarColor.RED
+                data.sootPercentage < 0 && data.loadPercentage < 0 -> CarColor.DEFAULT
+                worst >= 80f -> CarColor.RED
+                worst >= 60f -> CarColor.YELLOW
+                else         -> CarColor.GREEN
             }
-            coloredSpan("$pct%", color)
-        } else {
-            SpannableString("– –")
+            coloredSpan(
+                "${carContext.getString(R.string.car_label_soot)}: $soot  ·  " +
+                "${carContext.getString(R.string.car_label_load)}: $load",
+                color
+            )
         }
 
-        val sootText = if (data.sootPercentage >= 0) {
-            "Soot: ${data.sootPercentage.toInt()}%"
+        // Delta P — colore: verde < 5, giallo 5-18, rosso > 18 kPa
+        val deltaP: SpannableString = if (data.dpfDeltaPressureKpa >= 0) {
+            val kpa = data.dpfDeltaPressureKpa
+            val color = when {
+                kpa > 18f -> CarColor.RED
+                kpa >= 5f -> CarColor.YELLOW
+                else      -> CarColor.GREEN
+            }
+            coloredSpan(
+                "${carContext.getString(R.string.car_label_delta_p)}: ${"%.1f".format(kpa)} kPa",
+                color
+            )
         } else {
-            "Soot: – –"
+            SpannableString("${carContext.getString(R.string.car_label_delta_p)}: ${carContext.getString(R.string.car_no_data)}")
         }
 
         return Row.Builder()
-            .setTitle(carContext.getString(R.string.car_row_load))
-            .addText(loadText)
-            .addText(sootText)
+            .setTitle(carContext.getString(R.string.car_row_dpf))
+            .addText(sootLoad)
+            .addText(deltaP)
             .build()
     }
 
-    /** Row 2 — Regeneration status with color and safety message. */
+    // ═════════════════════════════════════════════════════════════════════════
+    // Row 2 — RIGENERAZIONE: status colorato + fonte (ECU / EGT)
+    // ═════════════════════════════════════════════════════════════════════════
+
     private fun buildRegenRow(data: DpfData): Row {
-        val (statusText, statusColor) = when (data.regenStatus) {
-            RegenStatus.INACTIVE  -> Pair(
-                carContext.getString(R.string.regen_inactive), CarColor.GREEN
-            )
-            RegenStatus.WARNING   -> Pair(
-                carContext.getString(R.string.regen_warning), CarColor.YELLOW
-            )
-            RegenStatus.ACTIVE    -> Pair(
-                carContext.getString(R.string.regen_active), CarColor.RED
-            )
-            RegenStatus.COMPLETED -> Pair(
-                carContext.getString(R.string.regen_completed), CarColor.GREEN
-            )
+        val (statusStr, statusColor) = when (data.regenStatus) {
+            RegenStatus.INACTIVE  -> carContext.getString(R.string.car_regen_inactive)  to CarColor.GREEN
+            RegenStatus.WARNING   -> carContext.getString(R.string.car_regen_warning)   to CarColor.YELLOW
+            RegenStatus.ACTIVE    -> carContext.getString(R.string.car_regen_active)    to CarColor.RED
+            RegenStatus.COMPLETED -> carContext.getString(R.string.car_regen_completed) to CarColor.GREEN
         }
 
-        val strategyText = when (data.regenStrategy) {
-            com.example.fordfocusdpfscan.data.RegenStrategy.DIRECT_FLAG  -> "Source: ECU flag"
-            com.example.fordfocusdpfscan.data.RegenStrategy.EGT_FALLBACK -> "Source: EGT temp"
-            com.example.fordfocusdpfscan.data.RegenStrategy.NONE         -> ""
+        val sourceStr = when (data.regenStrategy) {
+            RegenStrategy.DIRECT_FLAG  -> carContext.getString(R.string.car_label_source_ecu)
+            RegenStrategy.EGT_FALLBACK -> carContext.getString(R.string.car_label_source_egt)
+            RegenStrategy.NONE         -> ""
         }
 
         return Row.Builder()
             .setTitle(carContext.getString(R.string.car_row_regen))
-            .addText(coloredSpan(statusText, statusColor))
-            .apply { if (strategyText.isNotEmpty()) addText(strategyText) }
-            .build()
-    }
-
-    /** Row 3 — Coolant temperature + EGT side by side. */
-    private fun buildTemperaturesRow(data: DpfData): Row {
-        val coolantStr: SpannableString = if (data.coolantTempC >= 0) {
-            val color = if (data.coolantTempC > 100f) CarColor.RED else CarColor.GREEN
-            coloredSpan("Coolant: ${data.coolantTempC.toInt()}°C", color)
-        } else {
-            SpannableString("Coolant: – –")
-        }
-
-        val egtStr: SpannableString = if (data.egtCelsius >= 0) {
-            val color = when {
-                data.egtCelsius >= 550f -> CarColor.RED
-                data.egtCelsius >= 450f -> CarColor.YELLOW
-                else                    -> CarColor.DEFAULT
-            }
-            coloredSpan("EGT: ${data.egtCelsius.toInt()}°C", color)
-        } else {
-            SpannableString("EGT: – –")
-        }
-
-        return Row.Builder()
-            .setTitle(carContext.getString(R.string.car_row_temps))
-            .addText(coolantStr)
-            .addText(egtStr)
-            .build()
-    }
-
-    /** Row 4 — Last regen km + last service km. */
-    private fun buildHistoryRow(data: DpfData): Row {
-        val regenKmStr = if (data.kmSinceLastRegen > 0L)
-            "Last regen: ${"%,d".format(data.kmSinceLastRegen)} km"
-        else
-            "Last regen: – –"
-
-        val serviceKmStr = if (data.kmSinceOilChange > 0L)
-            "Last service: ${"%,d".format(data.kmSinceOilChange)} km"
-        else
-            "Last service: not set"
-
-        return Row.Builder()
-            .setTitle(carContext.getString(R.string.car_row_history))
-            .addText(regenKmStr)
-            .addText(serviceKmStr)
+            .addText(coloredSpan(statusStr, statusColor))
+            .apply { if (sourceStr.isNotEmpty()) addText(sourceStr) }
             .build()
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // ActionStrip — Reconnect button in the top-right corner
+    // Row 3 — TEMPERATURE: EGT (prima, critica) + Refrigerante
+    // ═════════════════════════════════════════════════════════════════════════
+
+    private fun buildTempsRow(data: DpfData): Row {
+        // EGT — soglie: verde < 450, giallo 450-549, rosso ≥ 550
+        val egtStr: SpannableString = if (data.egtCelsius >= 0) {
+            val color = when {
+                data.egtCelsius >= 550f -> CarColor.RED
+                data.egtCelsius >= 450f -> CarColor.YELLOW
+                else                    -> CarColor.GREEN
+            }
+            coloredSpan(
+                "${carContext.getString(R.string.car_label_egt)}: ${data.egtCelsius.toInt()} °C",
+                color
+            )
+        } else {
+            SpannableString("${carContext.getString(R.string.car_label_egt)}: ${carContext.getString(R.string.car_no_data)}")
+        }
+
+        // Refrigerante — verde < 100, rosso ≥ 100
+        val coolantStr: SpannableString = if (data.coolantTempC >= 0) {
+            val color = if (data.coolantTempC >= 100f) CarColor.RED else CarColor.GREEN
+            coloredSpan(
+                "${carContext.getString(R.string.car_label_coolant)}: ${data.coolantTempC.toInt()} °C",
+                color
+            )
+        } else {
+            SpannableString("${carContext.getString(R.string.car_label_coolant)}: ${carContext.getString(R.string.car_no_data)}")
+        }
+
+        return Row.Builder()
+            .setTitle(carContext.getString(R.string.car_row_temps))
+            .addText(egtStr)
+            .addText(coolantStr)
+            .build()
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Row 4 — DISTANZE: km da ultima regen + km da ultimo tagliando
+    // ═════════════════════════════════════════════════════════════════════════
+
+    private fun buildDistancesRow(data: DpfData): Row {
+        val regenStr = if (data.kmSinceLastRegen > 0L)
+            "${carContext.getString(R.string.car_label_km_regen)}: ${"%,d".format(data.kmSinceLastRegen)} km"
+        else
+            "${carContext.getString(R.string.car_label_km_regen)}: ${carContext.getString(R.string.car_no_data)}"
+
+        // Colora il tagliando: verde < 9000, giallo 9000-11000, rosso ≥ 11000
+        val oilStr: SpannableString = if (data.kmSinceOilChange > 0L) {
+            val km = data.kmSinceOilChange
+            val color = when {
+                km >= 11_000L -> CarColor.RED
+                km >= 9_000L  -> CarColor.YELLOW
+                else          -> CarColor.DEFAULT
+            }
+            coloredSpan(
+                "${carContext.getString(R.string.car_label_km_oil)}: ${"%,d".format(km)} km",
+                color
+            )
+        } else {
+            SpannableString("${carContext.getString(R.string.car_label_km_oil)}: ${carContext.getString(R.string.car_no_data)}")
+        }
+
+        return Row.Builder()
+            .setTitle(carContext.getString(R.string.car_row_distances))
+            .addText(regenStr)
+            .addText(oilStr)
+            .build()
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // ActionStrip — [Ricollega] in alto a destra
     // ═════════════════════════════════════════════════════════════════════════
 
     private fun buildActionStrip(): ActionStrip {
@@ -209,16 +233,14 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
             .setTitle(carContext.getString(R.string.car_action_reconnect))
             .setBackgroundColor(CarColor.BLUE)
             .setOnClickListener {
-                // Send reconnect intent to the foreground service
                 val intent = Intent(carContext, DpfForegroundService::class.java).apply {
                     action = DpfForegroundService.ACTION_RECONNECT
                 }
                 carContext.startForegroundService(intent)
 
-                // Show immediate feedback in-car
                 CarToast.makeText(
                     carContext,
-                    "Reconnecting to Android-Vlink…",
+                    "Riconnessione a Android-Vlink…",
                     CarToast.LENGTH_SHORT
                 ).show()
             }
@@ -230,22 +252,21 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // CarToast — in-car overlay messages for status transitions
+    // CarToast — messaggio sovrapposto in auto su ogni transizione di stato
     // ═════════════════════════════════════════════════════════════════════════
 
-    private fun showCarToast(old: RegenStatus, new: RegenStatus) {
-        val message = when (new) {
-            RegenStatus.WARNING   -> carContext.getString(R.string.toast_warning)
-            RegenStatus.ACTIVE    -> carContext.getString(R.string.toast_active)
-            RegenStatus.COMPLETED -> carContext.getString(R.string.toast_complete)
-            RegenStatus.INACTIVE  -> return  // No toast when going back to inactive
+    private fun showCarToast(newStatus: RegenStatus) {
+        val message = when (newStatus) {
+            RegenStatus.WARNING   -> carContext.getString(R.string.car_toast_warning)
+            RegenStatus.ACTIVE    -> carContext.getString(R.string.car_toast_active)
+            RegenStatus.COMPLETED -> carContext.getString(R.string.car_toast_complete)
+            RegenStatus.INACTIVE  -> return  // nessun toast per il ritorno a inattivo
         }
-
         CarToast.makeText(carContext, message, CarToast.LENGTH_LONG).show()
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Helper — builds a SpannableString with a CarColor span
+    // Helper — SpannableString con CarColor span
     // ═════════════════════════════════════════════════════════════════════════
 
     private fun coloredSpan(text: String, color: CarColor): SpannableString {

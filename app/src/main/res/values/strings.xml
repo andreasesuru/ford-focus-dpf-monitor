@@ -57,11 +57,34 @@
     <string name="toast_complete">✅ Regen complete. Safe to stop the engine.</string>
     <string name="toast_ble_lost">📵 OBD dongle disconnected</string>
 
-    <!-- Android Auto screen -->
+    <!-- Android Auto screen — row titles -->
     <string name="car_screen_title">FOCUS — DPF Monitor</string>
-    <string name="car_action_reconnect">Reconnect</string>
-    <string name="car_row_load">DPF Load</string>
-    <string name="car_row_regen">Regeneration Status</string>
-    <string name="car_row_temps">Temperatures</string>
-    <string name="car_row_history">History</string>
+    <string name="car_action_reconnect">Ricollega</string>
+    <string name="car_row_dpf">Filtro DPF</string>
+    <string name="car_row_regen">Rigenerazione</string>
+    <string name="car_row_temps">Temperature</string>
+    <string name="car_row_distances">Distanze</string>
+
+    <!-- Android Auto screen — inline labels -->
+    <string name="car_label_soot">Soot</string>
+    <string name="car_label_load">Load</string>
+    <string name="car_label_delta_p">Delta P</string>
+    <string name="car_label_egt">EGT</string>
+    <string name="car_label_coolant">Refrig.</string>
+    <string name="car_label_km_regen">Da regen</string>
+    <string name="car_label_km_oil">Da tagliando</string>
+    <string name="car_label_source_ecu">Fonte: flag ECU</string>
+    <string name="car_label_source_egt">Fonte: temp EGT</string>
+    <string name="car_no_data">– –</string>
+
+    <!-- Android Auto — regen status labels (Italian) -->
+    <string name="car_regen_inactive">Inattiva — Ok fermarsi</string>
+    <string name="car_regen_warning">⚠ Alta temp — Non spegnere</string>
+    <string name="car_regen_active">🔴 ATTIVA — Non spegnere!</string>
+    <string name="car_regen_completed">✅ Completata — Ok fermarsi</string>
+
+    <!-- Android Auto — CarToast messages (Italian) -->
+    <string name="car_toast_warning">⚠ EGT alta — evita di spegnere il motore</string>
+    <string name="car_toast_active">🔴 Regen attiva! NON spegnere il motore!</string>
+    <string name="car_toast_complete">✅ Regen completata. Ok spegnere il motore.</string>
 </resources>
