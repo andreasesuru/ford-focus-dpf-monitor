@@ -1,3 +1,0 @@
-com.example.fordfocusdpfscan.test
-style WhiteBackgroundDialogTheme
-style WhiteBackgroundTheme

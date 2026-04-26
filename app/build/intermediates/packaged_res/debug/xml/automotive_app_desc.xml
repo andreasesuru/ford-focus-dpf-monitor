@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
-    Declares to the Android Auto host which Car App Library templates this app uses.
-    "template" covers PaneTemplate, ListTemplate, MessageTemplate etc.
--->
-<automotiveApp>
-    <uses name="template" />
-</automotiveApp>
