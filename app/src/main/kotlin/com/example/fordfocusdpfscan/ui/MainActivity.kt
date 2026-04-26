@@ -111,17 +111,18 @@ class MainActivity : AppCompatActivity() {
     private fun autoConnectIfNeeded() {
         // Only auto-connect if permissions are already granted — don't prompt here
         if (!hasRequiredPermissions()) return
-        // If the service is already running (e.g. returning from EcuScanActivity), do nothing
-        if (com.example.fordfocusdpfscan.ble.BleManagerHolder.instance != null) return
+        // If BLE is already CONNECTED (not just service running), skip
+        val existingManager = com.example.fordfocusdpfscan.ble.BleManagerHolder.instance
+        if (existingManager != null &&
+            existingManager.connectionState.value == com.example.fordfocusdpfscan.data.ConnectionState.CONNECTED) return
         // If no device was ever saved, nothing to connect to
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val lastAddress = prefs.getString(KEY_LAST_ADDRESS, null) ?: return
         val lastName    = prefs.getString(KEY_LAST_NAME, lastAddress) ?: lastAddress
 
         Log.d("FOCUS_Main", "Auto-connecting to $lastName ($lastAddress)…")
-        // Show a brief non-blocking toast so the user knows what's happening
         Toast.makeText(this,
-            "Connessione automatica a $lastName…",
+            "Riconnessione a $lastName…",
             Toast.LENGTH_SHORT).show()
         connectToDeviceAddress(lastAddress)
     }
