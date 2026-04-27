@@ -34,5 +34,10 @@
         <item name="android:statusBarColor">@color/background</item>
         <item name="android:navigationBarColor">@color/background</item>
         <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Android 15 (API 35) forces edge-to-edge, which makes the app draw
+             behind the status bar. We opt out since the app manages its own
+             header layout and does not need edge-to-edge behaviour. -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
 </resources>

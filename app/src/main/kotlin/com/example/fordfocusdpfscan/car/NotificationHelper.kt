@@ -170,7 +170,7 @@ object NotificationHelper {
         val summary = buildPersistentSummary(dpfData)
 
         return NotificationCompat.Builder(context, CHANNEL_PERSISTENT)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_car_header)
             .setContentTitle(context.getString(R.string.notif_persistent_title))
             .setContentText(summary)
             .setOngoing(true)             // Cannot be swiped away
@@ -263,7 +263,7 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_SERVICE)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_car_header)
             .setContentTitle("🔧 Tagliando in scadenza")
             .setContentText("Hai percorso %,d km dall'ultimo cambio olio — prenota dal meccanico.".format(kmSinceOilChange))
             .setStyle(NotificationCompat.BigTextStyle()
@@ -318,7 +318,7 @@ object NotificationHelper {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_REGEN)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_car_header)
             .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
@@ -373,7 +373,7 @@ object NotificationHelper {
         )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_CONNECTION)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_car_header)
             .setContentTitle(title)
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
