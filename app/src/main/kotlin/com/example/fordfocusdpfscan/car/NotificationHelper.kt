@@ -59,6 +59,21 @@ object NotificationHelper {
     // ── Whether channels have been created ────────────────────────────────────
     private var channelsCreated = false
 
+    // ── Cached icon bitmap — decoded once, reused for all notifications ───────
+    // ic_ford_focus.png is 5 MB on disk; decoding it on every notification
+    // call caused visible UI lag. We scale it to 128×128 dp and cache it.
+    private var cachedIconBitmap: android.graphics.Bitmap? = null
+    private fun getIconBitmap(context: Context): android.graphics.Bitmap {
+        return cachedIconBitmap ?: run {
+            val size = (128 * context.resources.displayMetrics.density).toInt()
+            val raw = BitmapFactory.decodeResource(context.resources, R.drawable.ic_ford_focus)
+            val scaled = android.graphics.Bitmap.createScaledBitmap(raw, size, size, true)
+            if (scaled !== raw) raw.recycle()
+            cachedIconBitmap = scaled
+            scaled
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════════
     // Channel creation — must be called before posting any notification
     // ═════════════════════════════════════════════════════════════════════════
@@ -321,7 +336,7 @@ object NotificationHelper {
                     .setContentTitle(title)
                     .setContentText(text)
                     .setContentIntent(carTapIntent)     // tap → DpfScreen sul display
-                    .setLargeIcon(BitmapFactory.decodeResource(context.resources, R.drawable.ic_ford_focus))
+                    .setLargeIcon(getIconBitmap(context))
                     .build()
             )
             .build()
@@ -374,7 +389,7 @@ object NotificationHelper {
                     .setContentTitle(title)
                     .setContentText(text)
                     .setContentIntent(carTapIntent)     // tap → DpfScreen sul display
-                    .setLargeIcon(BitmapFactory.decodeResource(context.resources, R.drawable.ic_ford_focus))
+                    .setLargeIcon(getIconBitmap(context))
                     .build()
             )
             .build()

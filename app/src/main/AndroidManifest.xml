@@ -97,6 +97,14 @@
              ANDROID AUTO — CarAppService entry point
              Category IOT = monitoring/utility app (not navigation/parking)
         ───────────────────────────────────────────────────────────────────── -->
+        <!-- ─────────────────────────────────────────────────────────────────
+             ANDROID AUTO — required meta-data so the AA host discovers
+             this app and shows it in the launcher grid.
+        ───────────────────────────────────────────────────────────────────── -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
         <service
             android:name=".car.DpfCarAppService"
             android:exported="true"
