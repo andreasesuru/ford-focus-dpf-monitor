@@ -9,7 +9,7 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.fordfocusdpfscan"
+        applicationId "com.andreasesuru.focusdpfmonitor"
         minSdk 26                   // Android 8.0 — required by Car App Library
         targetSdk 34
         versionCode 19
