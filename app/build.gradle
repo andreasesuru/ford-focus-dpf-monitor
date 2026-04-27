@@ -12,7 +12,7 @@ android {
         applicationId "com.andreasesuru.focusdpfmonitor"
         minSdk 26                   // Android 8.0 — required by Car App Library
         targetSdk 35
-        versionCode 19
+        versionCode 20
         versionName "3.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
