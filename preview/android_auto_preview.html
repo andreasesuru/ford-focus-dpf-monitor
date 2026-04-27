@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DPF Monitor — Android Auto Preview</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0A0A0A;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    padding: 20px;
+  }
+
+  /* Schermo Sync 3 — 8" · 800×480 px · 15:9 */
+  .screen {
+    width: 800px;
+    height: 480px;
+    background: #111111;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 2px solid #222;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 60px rgba(0,0,0,0.8);
+    position: relative;   /* needed for notification overlay */
+  }
+
+  /* Barra di stato Android Auto */
+  .statusbar {
+    background: #1A1A1A;
+    padding: 6px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #2A2A2A;
+  }
+  .statusbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 11px;
+    color: #888;
+  }
+  .aa-logo {
+    color: #4F8EF7;
+    font-weight: bold;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  .statusbar-right {
+    font-size: 11px;
+    color: #888;
+  }
+
+  /* Header app */
+  .app-header {
+    background: #1A1A1A;
+    padding: 10px 20px 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #2A2A2A;
+  }
+  .app-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .app-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .app-name {
+    font-size: 15px;
+    font-weight: bold;
+    color: #FFFFFF;
+    letter-spacing: 0.5px;
+  }
+  .connection-status {
+    font-size: 11px;
+    color: #34C759;
+    margin-top: 2px;
+  }
+  .connection-status.disconnected {
+    color: #FF9F0A;
+  }
+  .btn-reconnect {
+    background: transparent;
+    border: 1.5px solid #4F8EF7;
+    color: #4F8EF7;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  /* Content area */
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 16px 8px 16px;
+    gap: 6px;
+  }
+
+  /* Row */
+  .row {
+    background: #1E1E1E;
+    border-radius: 10px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    border-left: 3px solid #2A2A2A;
+  }
+  .row-label {
+    font-size: 9px;
+    font-weight: bold;
+    color: #5A6A7A;
+    letter-spacing: 1px;
+    width: 110px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+  }
+  .row-data {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .row-value {
+    font-size: 15px;
+    font-weight: bold;
+    color: #FFFFFF;
+  }
+  .row-sub {
+    font-size: 12px;
+    font-weight: 600;
+    color: #AAAAAA;
+  }
+
+  /* Status colors */
+  .green  { color: #34C759; }
+  .yellow { color: #FF9F0A; }
+  .red    { color: #FF3B30; }
+  .blue   { color: #4F8EF7; }
+  .white  { color: #FFFFFF; }
+  .muted  { color: #7A8FA6; }
+
+  /* Border colors by status */
+  .row.ok     { border-left-color: #34C759; }
+  .row.warn   { border-left-color: #FF9F0A; }
+  .row.alert  { border-left-color: #FF3B30; }
+  .row.info   { border-left-color: #4F8EF7; }
+  .row.neutral{ border-left-color: #2A3A4A; }
+
+  /* Toggle buttons */
+  .toggle-bar {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 20px;
+  }
+  .toggle-btn {
+    background: #1E2A3A;
+    border: 1px solid #2A3A4A;
+    color: #7A8FA6;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .toggle-btn:hover, .toggle-btn.active {
+    background: #4F8EF7;
+    color: white;
+    border-color: #4F8EF7;
+  }
+  .label-below {
+    text-align: center;
+    color: #3A4A5A;
+    font-size: 11px;
+    margin-top: 10px;
+  }
+
+  /* ── Notification heads-up overlay (CarAppExtender) ── */
+  .notif-overlay {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: #1C1C1E;
+    border-top: 2px solid #FF3B30;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 50;
+    cursor: pointer;
+  }
+  .notif-overlay.visible {
+    transform: translateY(0);
+  }
+  .notif-overlay.notif-warn {
+    border-top-color: #FF9F0A;
+  }
+  .notif-overlay.notif-ok {
+    border-top-color: #34C759;
+  }
+  .notif-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .notif-body {
+    flex: 1;
+  }
+  .notif-title {
+    font-size: 14px;
+    font-weight: bold;
+    color: #FFFFFF;
+    margin-bottom: 3px;
+  }
+  .notif-text {
+    font-size: 12px;
+    color: #AAAAAA;
+  }
+  .notif-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+  .notif-dismiss {
+    background: #2A2A2A;
+    border: none;
+    color: #888;
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .notif-dismiss:hover { background: #3A3A3A; color: #FFF; }
+  .notif-timer {
+    font-size: 10px;
+    color: #555;
+  }
+  .notif-tap-hint {
+    font-size: 10px;
+    color: #4F8EF7;
+    text-align: right;
+  }
+  /* Flash "App aperta" */
+  .open-flash {
+    position: absolute;
+    inset: 0;
+    background: rgba(79, 142, 247, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: bold;
+    color: #4F8EF7;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 60;
+    border-radius: 14px;
+  }
+  .open-flash.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+
+  <!-- Toggle scenari -->
+  <div class="toggle-bar">
+    <button class="toggle-btn active" onclick="setScenario('idle')">Idle — Connesso</button>
+    <button class="toggle-btn" onclick="setScenario('regen')">🔴 Regen Attiva</button>
+    <button class="toggle-btn" onclick="setScenario('warning')">⚠ Warning EGT</button>
+    <button class="toggle-btn" onclick="setScenario('disconnected')">Non connesso</button>
+    <button class="toggle-btn" onclick="triggerNotif('regen')">🔔 Notifica Regen</button>
+    <button class="toggle-btn" onclick="triggerNotif('warn')">🔔 Notifica Warning</button>
+    <button class="toggle-btn" onclick="triggerNotif('completed')">🔔 Regen Completata</button>
+    <button class="toggle-btn" onclick="triggerNotif('obd')">🔔 OBD Disconnesso</button>
+  </div>
+
+  <!-- Schermo Auto -->
+  <div class="screen">
+
+    <!-- Status bar -->
+    <div class="statusbar">
+      <div class="statusbar-left">
+        <span class="aa-logo">▶ Android Auto</span>
+        <span>Ford Focus · Sync 3</span>
+      </div>
+      <div class="statusbar-right" id="clock">19:53</div>
+    </div>
+
+    <!-- App header -->
+    <div class="app-header">
+      <div class="app-title">
+        <div class="app-icon">
+          <img src="ic_ford_focus.png" width="36" height="36" alt="DPF Monitor"/>
+        </div>
+        <div>
+          <div class="app-name">FOCUS — DPF Monitor</div>
+          <div class="connection-status" id="conn-status">● Connesso · Android-Vlink</div>
+        </div>
+      </div>
+      <button class="btn-reconnect">Ricollega</button>
+    </div>
+
+    <!-- Rows -->
+    <div class="content">
+
+      <!-- Row 1: Filtro DPF -->
+      <div class="row ok" id="row-dpf">
+        <div class="row-label">Filtro DPF</div>
+        <div class="row-data">
+          <div class="row-value"><span class="green" id="soot-val">Soot: 13%</span></div>
+          <div class="row-sub"><span class="green" id="load-val">Load: 1%</span></div>
+        </div>
+      </div>
+
+      <!-- Row 2: Rigenerazione -->
+      <div class="row ok" id="row-regen">
+        <div class="row-label">Rigenerazione</div>
+        <div class="row-data">
+          <div class="row-value"><span class="green" id="regen-val">Inattiva — Puoi spegnere il motore</span></div>
+          <div class="row-sub muted" id="regen-src">Fonte: temp EGT</div>
+        </div>
+      </div>
+
+      <!-- Row 3: Gas di scarico -->
+      <div class="row ok" id="row-egt">
+        <div class="row-label">Gas Scarico</div>
+        <div class="row-data">
+          <div class="row-value"><span id="egt-val" class="green">EGT: 100 °C</span></div>
+          <div class="row-sub muted" id="delta-val">ΔT: +0 °C</div>
+        </div>
+      </div>
+
+      <!-- Row 4: Motore -->
+      <div class="row ok" id="row-engine">
+        <div class="row-label">Motore</div>
+        <div class="row-data">
+          <div class="row-value"><span class="green" id="coolant-val">Refrig.: 88 °C</span></div>
+          <div class="row-sub"><span class="green" id="engineload-val">Carico: 38%</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Notification heads-up overlay -->
+    <div class="notif-overlay" id="notif-overlay" onclick="onNotifTap()">
+      <div class="notif-icon">
+        <img src="ic_ford_focus.png" width="44" height="44" alt="icon"/>
+      </div>
+      <div class="notif-body">
+        <div class="notif-title" id="notif-title">🔴 Regen attiva!</div>
+        <div class="notif-text" id="notif-text">NON spegnere il motore!</div>
+      </div>
+      <div class="notif-right">
+        <button class="notif-dismiss" onclick="dismissNotif(event)">×</button>
+        <div class="notif-timer" id="notif-timer">5s</div>
+        <div class="notif-tap-hint">Tocca per aprire</div>
+      </div>
+    </div>
+
+    <!-- Flash "App aperta" -->
+    <div class="open-flash" id="open-flash">▶ App aperta sul display</div>
+
+  </div>
+
+  <div class="label-below">Preview Android Auto — PaneTemplate · Car App Library 1.4 &nbsp;·&nbsp; Ford Focus Sync 3 · 8" · 800×480px · 15:9</div>
+
+</div>
+
+<script>
+  // Aggiorna orologio
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.getHours().toString().padStart(2,'0') + ':' +
+      now.getMinutes().toString().padStart(2,'0');
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  const scenarios = {
+    idle: {
+      conn: { text: '● Connesso · Android-Vlink', cls: 'connection-status' },
+      dpf:  { row: 'ok', soot: { text: 'Soot: 13%', cls: 'green' }, load: { text: 'Load: 1%', cls: 'green' } },
+      regen:{ row: 'ok', val: { text: 'Inattiva — Puoi spegnere il motore', cls: 'green' }, src: 'Fonte: temp EGT' },
+      egt:  { row: 'ok', val: { text: 'EGT: 100 °C', cls: 'green' }, delta: 'ΔT: +0 °C' },
+      eng:  { row: 'ok', cool: { text: 'Refrig.: 88 °C', cls: 'green' }, load: { text: 'Carico: 38%', cls: 'green' } },
+    },
+    regen: {
+      conn: { text: '● Connesso · Android-Vlink', cls: 'connection-status' },
+      dpf:  { row: 'alert', soot: { text: 'Soot: 72%', cls: 'red' }, load: { text: 'Load: 68%', cls: 'red' } },
+      regen:{ row: 'alert', val: { text: '🔴 ATTIVA — Non spegnere!', cls: 'red' }, src: 'Fonte: flag ECU' },
+      egt:  { row: 'alert', val: { text: 'EGT: 683 °C', cls: 'red' }, delta: 'ΔT: −42 °C' },
+      eng:  { row: 'warn', cool: { text: 'Refrig.: 91 °C', cls: 'yellow' }, load: { text: 'Carico: 74%', cls: 'yellow' } },
+    },
+    warning: {
+      conn: { text: '● Connesso · Android-Vlink', cls: 'connection-status' },
+      dpf:  { row: 'warn', soot: { text: 'Soot: 58%', cls: 'yellow' }, load: { text: 'Load: 54%', cls: 'yellow' } },
+      regen:{ row: 'warn', val: { text: '⚠ Alta temp — Non spegnere', cls: 'yellow' }, src: 'Fonte: temp EGT' },
+      egt:  { row: 'warn', val: { text: 'EGT: 487 °C', cls: 'yellow' }, delta: 'ΔT: −18 °C' },
+      eng:  { row: 'ok', cool: { text: 'Refrig.: 89 °C', cls: 'green' }, load: { text: 'Carico: 61%', cls: 'green' } },
+    },
+    disconnected: {
+      conn: { text: '⚡ Non connesso — verifica dongle OBD2', cls: 'connection-status disconnected' },
+      dpf:  { row: 'neutral', soot: { text: 'Soot: – –', cls: 'muted' }, load: { text: 'Load: – –', cls: 'muted' } },
+      regen:{ row: 'neutral', val: { text: '– –', cls: 'muted' }, src: '' },
+      egt:  { row: 'neutral', val: { text: 'EGT: – –', cls: 'muted' }, delta: 'ΔT: – –' },
+      eng:  { row: 'neutral', cool: { text: 'Refrig.: – –', cls: 'muted' }, load: { text: 'Carico: – –', cls: 'muted' } },
+    }
+  };
+
+  function setScenario(name) {
+    const s = scenarios[name];
+
+    // Connection
+    const conn = document.getElementById('conn-status');
+    conn.textContent = s.conn.text;
+    conn.className = s.conn.cls;
+
+    // Row DPF
+    document.getElementById('row-dpf').className = 'row ' + s.dpf.row;
+    setSpan('soot-val', s.dpf.soot);
+    setSpan('load-val', s.dpf.load);
+
+    // Row Regen
+    document.getElementById('row-regen').className = 'row ' + s.regen.row;
+    setSpan('regen-val', s.regen.val);
+    document.getElementById('regen-src').textContent = s.regen.src;
+
+    // Row EGT
+    document.getElementById('row-egt').className = 'row ' + s.egt.row;
+    setSpan('egt-val', s.egt.val);
+    document.getElementById('delta-val').textContent = s.egt.delta;
+
+    // Row Engine
+    document.getElementById('row-engine').className = 'row ' + s.eng.row;
+    setSpan('coolant-val', s.eng.cool);
+    setSpan('engineload-val', s.eng.load);
+
+    // Buttons
+    document.querySelectorAll('.toggle-btn').forEach((b,i) => {
+      b.classList.toggle('active', ['idle','regen','warning','disconnected'][i] === name);
+    });
+  }
+
+  function setSpan(id, data) {
+    const el = document.getElementById(id);
+    el.textContent = data.text;
+    el.className = data.cls;
+  }
+
+  // ── Notification heads-up ─────────────────────────────────────────────────
+
+  const notifTypes = {
+    regen: {
+      title:    '🔴 Regen attiva!',
+      text:     'NON spegnere il motore — rigenerazione DPF in corso.',
+      border:   '#FF3B30',
+      cls:      '',
+      scenario: 'regen',
+    },
+    warn: {
+      title:    '⚠ Temperatura EGT alta',
+      text:     'Evita di spegnere il motore. EGT: 487 °C.',
+      border:   '#FF9F0A',
+      cls:      'notif-warn',
+      scenario: 'warning',
+    },
+    completed: {
+      title:    '✅ Rigenerazione completata',
+      text:     'DPF pulito correttamente. Puoi spegnere il motore.',
+      border:   '#34C759',
+      cls:      'notif-ok',
+      scenario: 'idle',
+    },
+    obd: {
+      title:    '📡 OBD Disconnesso',
+      text:     'Dongle Android-Vlink non risponde. Tocca per ricollegare.',
+      border:   '#FF9F0A',
+      cls:      'notif-warn',
+      scenario: 'disconnected',
+    },
+  };
+
+  let notifTimerInterval = null;
+  let notifSecondsLeft   = 5;
+
+  function triggerNotif(type) {
+    const cfg = notifTypes[type];
+    // First switch the background scenario
+    setScenario(cfg.scenario);
+
+    // Populate content
+    document.getElementById('notif-title').textContent = cfg.title;
+    document.getElementById('notif-text').textContent  = cfg.text;
+    const overlay = document.getElementById('notif-overlay');
+    overlay.className = 'notif-overlay' + (cfg.cls ? ' ' + cfg.cls : '');
+
+    // Show
+    notifSecondsLeft = 5;
+    document.getElementById('notif-timer').textContent = notifSecondsLeft + 's';
+    overlay.classList.add('visible');
+
+    // Countdown
+    clearInterval(notifTimerInterval);
+    notifTimerInterval = setInterval(() => {
+      notifSecondsLeft--;
+      document.getElementById('notif-timer').textContent = notifSecondsLeft + 's';
+      if (notifSecondsLeft <= 0) dismissNotif();
+    }, 1000);
+
+    // Deactivate notif buttons highlight after showing
+    document.querySelectorAll('.toggle-btn').forEach(b => {
+      if (b.onclick && b.onclick.toString().includes('triggerNotif')) {
+        b.classList.remove('active');
+      }
+    });
+  }
+
+  function dismissNotif(event) {
+    if (event) event.stopPropagation();
+    clearInterval(notifTimerInterval);
+    document.getElementById('notif-overlay').classList.remove('visible');
+  }
+
+  function onNotifTap() {
+    dismissNotif();
+    // Flash "App aperta sul display"
+    const flash = document.getElementById('open-flash');
+    flash.classList.add('show');
+    setTimeout(() => flash.classList.remove('show'), 1200);
+  }
+</script>
+</body>
+</html>

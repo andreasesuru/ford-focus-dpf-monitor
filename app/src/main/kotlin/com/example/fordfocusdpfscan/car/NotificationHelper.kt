@@ -11,8 +11,10 @@ import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import androidx.car.app.notification.CarAppExtender
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.graphics.drawable.IconCompat
 import com.example.fordfocusdpfscan.R
 import com.example.fordfocusdpfscan.data.DpfData
 import com.example.fordfocusdpfscan.data.RegenStatus
@@ -273,6 +275,11 @@ object NotificationHelper {
      * Posts a heads-up regen notification on CHANNEL_REGEN.
      * Plays dpf_monitor_sound.mp3 automatically (set on the channel).
      * Auto-dismisses after [EVENT_TIMEOUT_MS].
+     *
+     * On the car screen:
+     *   - Popup heads-up with large Ford Focus icon
+     *   - Plays through car speakers (IMPORTANCE_HIGH on the channel)
+     *   - Tap → opens DpfScreen directly on the car display
      */
     private fun postEventNotification(
         context: Context,
@@ -281,9 +288,17 @@ object NotificationHelper {
         color: Int,
         priority: Int = NotificationCompat.PRIORITY_HIGH
     ) {
-        val tapIntent = PendingIntent.getActivity(
+        // Phone tap: opens MainActivity on the handset
+        val phoneTapIntent = PendingIntent.getActivity(
             context, 0,
             Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Car tap: opens DpfCarAppService → shows DpfScreen on the car display
+        val carTapIntent = PendingIntent.getService(
+            context, NOTIF_ID_EVENT,
+            Intent(context, DpfCarAppService::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -299,12 +314,14 @@ object NotificationHelper {
             .setAutoCancel(true)
             .setTimeoutAfter(EVENT_TIMEOUT_MS)
             .setOnlyAlertOnce(false)             // sound plays every regen event
-            .setContentIntent(tapIntent)
+            .setContentIntent(phoneTapIntent)
             .extend(
-                androidx.car.app.notification.CarAppExtender.Builder()
+                CarAppExtender.Builder()
                     .setImportance(NotificationManagerCompat.IMPORTANCE_HIGH)
                     .setContentTitle(title)
                     .setContentText(text)
+                    .setContentIntent(carTapIntent)     // tap → DpfScreen sul display
+                    .setLargeIcon(IconCompat.createWithResource(context, R.drawable.ic_ford_focus))
                     .build()
             )
             .build()
@@ -319,6 +336,8 @@ object NotificationHelper {
     /**
      * Posts a silent connection notification on CHANNEL_CONNECTION.
      * No sound, no vibration — just a heads-up popup.
+     *
+     * On the car screen: tap → opens DpfScreen so the driver can check the status.
      */
     private fun postConnectionNotification(
         context: Context,
@@ -326,9 +345,15 @@ object NotificationHelper {
         text: String,
         color: Int
     ) {
-        val tapIntent = PendingIntent.getActivity(
+        val phoneTapIntent = PendingIntent.getActivity(
             context, 0,
             Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val carTapIntent = PendingIntent.getService(
+            context, NOTIF_ID_CONNECTION,
+            Intent(context, DpfCarAppService::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
@@ -341,8 +366,17 @@ object NotificationHelper {
             .setColor(color)
             .setAutoCancel(true)
             .setTimeoutAfter(4_000L)   // dismiss after 4 s
-            .setSilent(true)           // override channel — belt + suspenders
-            .setContentIntent(tapIntent)
+            .setSilent(true)
+            .setContentIntent(phoneTapIntent)
+            .extend(
+                CarAppExtender.Builder()
+                    .setImportance(NotificationManagerCompat.IMPORTANCE_DEFAULT)
+                    .setContentTitle(title)
+                    .setContentText(text)
+                    .setContentIntent(carTapIntent)     // tap → DpfScreen sul display
+                    .setLargeIcon(IconCompat.createWithResource(context, R.drawable.ic_ford_focus))
+                    .build()
+            )
             .build()
 
         try {

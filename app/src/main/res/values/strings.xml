@@ -78,13 +78,13 @@
     <string name="car_no_data">– –</string>
 
     <!-- Android Auto — regen status labels (Italian) -->
-    <string name="car_regen_inactive">Inattiva — Ok fermarsi</string>
+    <string name="car_regen_inactive">Inattiva — Puoi spegnere il motore</string>
     <string name="car_regen_warning">⚠ Alta temp — Non spegnere</string>
     <string name="car_regen_active">🔴 ATTIVA — Non spegnere!</string>
-    <string name="car_regen_completed">✅ Completata — Ok fermarsi</string>
+    <string name="car_regen_completed">✅ Completata — Puoi spegnere il motore</string>
 
     <!-- Android Auto — CarToast messages (Italian) -->
     <string name="car_toast_warning">⚠ EGT alta — evita di spegnere il motore</string>
     <string name="car_toast_active">🔴 Regen attiva! NON spegnere il motore!</string>
-    <string name="car_toast_complete">✅ Regen completata. Ok spegnere il motore.</string>
+    <string name="car_toast_complete">✅ Regen completata. Puoi spegnere il motore.</string>
 </resources>
