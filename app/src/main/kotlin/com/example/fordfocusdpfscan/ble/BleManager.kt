@@ -627,93 +627,100 @@ class BleManager(private val context: Context) {
         val first = bytes[0].toInt() and 0xFF
         if (first == 0x7F) return   // UDS negative response
 
+        // ── Echo byte validation ───────────────────────────────────────────────
+        // Each OBD2 response echoes the requested PID in the first 1-3 bytes.
+        // We MUST verify this before applying any formula, because:
+        //   - stale responses from timed-out commands can be consumed by the next
+        //     command (CONFLATED channel keeps only the last value), and
+        //   - applying the wrong formula to mismatched bytes produces wild values.
+        //
+        // Mode 01: cmd="01XX" → response[0]=0x41, response[1]=0xXX
+        // Mode 22: cmd="22XXYY" → response[0]=0x62, response[1]=0xXX, response[2]=0xYY
+        fun b(i: Int) = bytes[i].toInt() and 0xFF
+        fun checkMode01(pid: Int) = first == 0x41 && bytes.size >= 2 && b(1) == pid
+        fun checkMode22(p1: Int, p2: Int) = first == 0x62 && bytes.size >= 3 && b(1) == p1 && b(2) == p2
+
         when (cmd) {
-            CMD_COOLANT_TEMP -> if (first == 0x41 && bytes.size >= 3) {
-                DpfRepository.updateCoolantTemp(((bytes[2].toInt() and 0xFF) - 40).toFloat())
+            CMD_COOLANT_TEMP -> if (checkMode01(0x05) && bytes.size >= 3) {
+                // 41 05 <A> — A - 40 = °C. Range: -40..215°C; plausible: -10..130°C.
+                val v = (b(2) - 40).toFloat()
+                if (v in -10f..130f) DpfRepository.updateCoolantTemp(v)
             }
-            CMD_ODOMETER -> if (first == 0x62 && bytes.size >= 6) {
-                // 22DD01 response: 62 DD 01 XX XX XX (3 data bytes → km)
-                // Confirmed: 02 59 69 = 153 961 km
+            CMD_ODOMETER -> if (checkMode22(0xDD, 0x01) && bytes.size >= 6) {
+                // 62 DD 01 XX XX XX (3 data bytes → km big-endian)
                 val km = ((bytes[3].toLong() and 0xFF) shl 16) or
                          ((bytes[4].toLong() and 0xFF) shl 8)  or
                           (bytes[5].toLong() and 0xFF)
                 DpfRepository.updateOdometer(km)
             }
-            CMD_EGT -> if (first == 0x41 && bytes.size >= 5) {
-                // PID 0178 format: 41 78 <support> <sens1Hi> <sens1Lo> [<sens2Hi> <sens2Lo> ...]
-                // bytes[2] = support byte (bit7=sens1, bit6=sens2, bit5=sens3, bit4=sens4)
-                // bytes[3..4] = EGT sensor 1 (pre-DPF upstream)
-                // bytes[5..6] = EGT sensor 2 (post-DPF downstream) if present
-                // Formula: (A*256+B) * 0.1 - 40 = °C
-                val raw1 = ((bytes[3].toInt() and 0xFF) shl 8) or (bytes[4].toInt() and 0xFF)
-                DpfRepository.updateEgt(raw1 * 0.1f - 40f)
-                // Sensor 2 (post-DPF) — only if the response has enough bytes
+            CMD_EGT -> if (checkMode01(0x78) && bytes.size >= 5) {
+                // 41 78 <support> <sens1Hi> <sens1Lo> [<sens2Hi> <sens2Lo>]
+                // Formula: (A*256+B) * 0.1 - 40 = °C. Plausible range: 0..950°C.
+                val raw1 = (b(3) shl 8) or b(4)
+                val egt1 = raw1 * 0.1f - 40f
+                if (egt1 in 0f..950f) DpfRepository.updateEgt(egt1)
                 if (bytes.size >= 7) {
-                    val raw2 = ((bytes[5].toInt() and 0xFF) shl 8) or (bytes[6].toInt() and 0xFF)
+                    val raw2 = (b(5) shl 8) or b(6)
                     val egt2 = raw2 * 0.1f - 40f
-                    if (egt2 > -40f && egt2 < 1000f) DpfRepository.updateEgtPost(egt2)
+                    if (egt2 in 0f..950f) DpfRepository.updateEgtPost(egt2)
                 }
             }
-            CMD_DPF_LOAD -> if (first == 0x62 && bytes.size >= 5) {
-                // 62 05 79 <hi> <lo> — raw integer = % load directly (0–320 scale)
-                // Validated: raw=1 → 1% (competitor app confirms exact match)
-                val raw = ((bytes[3].toInt() and 0xFF) shl 8) or (bytes[4].toInt() and 0xFF)
+            CMD_DPF_LOAD -> if (checkMode22(0x05, 0x79) && bytes.size >= 5) {
+                // 62 05 79 <hi> <lo> — raw integer = % load (0–320 scale)
+                val raw = (b(3) shl 8) or b(4)
                 DpfRepository.updateLoad(raw.toFloat().coerceIn(0f, 320f))
             }
-            CMD_DPF_SOOT -> if (first == 0x62 && bytes.size >= 5) {
-                // 62 05 7B <hi> <lo> — raw integer = % soot directly (0–320 scale)
-                // Validated: raw≈14 → 14% (competitor app confirms match)
-                val raw = ((bytes[3].toInt() and 0xFF) shl 8) or (bytes[4].toInt() and 0xFF)
+            CMD_DPF_SOOT -> if (checkMode22(0x05, 0x7B) && bytes.size >= 5) {
+                // 62 05 7B <hi> <lo> — raw integer = % soot (0–320 scale)
+                val raw = (b(3) shl 8) or b(4)
                 DpfRepository.updateSoot(raw.toFloat().coerceIn(0f, 320f))
             }
-            CMD_LAST_REGEN_DIST -> if (first == 0x62 && bytes.size >= 5) {
-                // 62 05 0B <hi> <lo> — km since last DPF regeneration
-                // Validated: raw=0x019A=410 km vs competitor 411.5 km ✓
+            CMD_LAST_REGEN_DIST -> if (checkMode22(0x05, 0x0B) && bytes.size >= 5) {
+                // 62 05 0B <hi> <lo> — km since last regen
                 val km = ((bytes[3].toLong() and 0xFF) shl 8) or (bytes[4].toLong() and 0xFF)
                 DpfRepository.updateKmSinceLastRegen(km)
             }
-            CMD_OIL_CHANGE -> if (first == 0x62 && bytes.size >= 5) {
+            CMD_OIL_CHANGE -> if (checkMode22(0x05, 0x42) && bytes.size >= 5) {
                 // 62 05 42 <hi> <lo> — km since last oil change
-                // Validated: raw=0x2313=8979 km vs competitor 8979 km — perfect match ✓
                 val km = ((bytes[3].toLong() and 0xFF) shl 8) or (bytes[4].toLong() and 0xFF)
                 DpfRepository.updateKmSinceOilChange(km)
             }
-            CMD_RPM -> if (first == 0x41 && bytes.size >= 4) {
-                // 41 0C <A> <B> — formula: ((A*256)+B)/4 = rpm
-                val raw = ((bytes[2].toInt() and 0xFF) shl 8) or (bytes[3].toInt() and 0xFF)
-                DpfRepository.updateRpm(raw / 4f)
+            CMD_RPM -> if (checkMode01(0x0C) && bytes.size >= 4) {
+                // 41 0C <A> <B> — ((A*256)+B)/4 = rpm. Plausible: 0..7000 rpm.
+                val raw = (b(2) shl 8) or b(3)
+                val rpm = raw / 4f
+                if (rpm in 0f..7000f) DpfRepository.updateRpm(rpm)
             }
-            CMD_SPEED -> if (first == 0x41 && bytes.size >= 3) {
-                // 41 0D <A> — formula: A = km/h
-                DpfRepository.updateSpeed((bytes[2].toInt() and 0xFF).toFloat())
+            CMD_SPEED -> if (checkMode01(0x0D) && bytes.size >= 3) {
+                // 41 0D <A> — A = km/h. Plausible: 0..250 km/h.
+                val v = b(2).toFloat()
+                if (v in 0f..250f) DpfRepository.updateSpeed(v)
             }
-            CMD_ENGINE_LOAD -> if (first == 0x41 && bytes.size >= 3) {
-                // 41 04 <A> — formula: A*100/255 = %
-                DpfRepository.updateEngineLoad(((bytes[2].toInt() and 0xFF) * 100f) / 255f)
+            CMD_ENGINE_LOAD -> if (checkMode01(0x04) && bytes.size >= 3) {
+                // 41 04 <A> — A*100/255 = %. Always 0..100.
+                DpfRepository.updateEngineLoad((b(2) * 100f) / 255f)
             }
-            CMD_INTAKE_MAP -> if (first == 0x41 && bytes.size >= 3) {
-                // 41 0B <A> — formula: A = kPa (absolute MAP)
-                DpfRepository.updateIntakeMap((bytes[2].toInt() and 0xFF).toFloat())
+            CMD_INTAKE_MAP -> if (checkMode01(0x0B) && bytes.size >= 3) {
+                // 41 0B <A> — A = kPa absolute. Plausible: 50..300 kPa.
+                val v = b(2).toFloat()
+                if (v in 50f..300f) DpfRepository.updateIntakeMap(v)
             }
-            CMD_BARO_PRESSURE -> if (first == 0x41 && bytes.size >= 3) {
-                // 41 33 <A> — formula: A = kPa (ambient)
-                DpfRepository.updateBaroPressure((bytes[2].toInt() and 0xFF).toFloat())
+            CMD_BARO_PRESSURE -> if (checkMode01(0x33) && bytes.size >= 3) {
+                // 41 33 <A> — A = kPa ambient. Plausible: 85..110 kPa.
+                val v = b(2).toFloat()
+                if (v in 85f..110f) DpfRepository.updateBaroPressure(v)
             }
-            CMD_OIL_TEMP -> if (first == 0x41 && bytes.size >= 3) {
-                // 41 5C <A> — formula: A - 40 = °C
-                DpfRepository.updateOilTemp(((bytes[2].toInt() and 0xFF) - 40).toFloat())
+            CMD_OIL_TEMP -> if (checkMode01(0x5C) && bytes.size >= 3) {
+                // 41 5C <A> — A - 40 = °C. Plausible: -20..150°C.
+                val v = (b(2) - 40).toFloat()
+                if (v in -20f..150f) DpfRepository.updateOilTemp(v)
             }
-            CMD_DPF_PRESSURE -> if (first == 0x41 && bytes.size >= 5) {
-                // PID 017A format (SAE J1979): 41 7A <support> <deltaHi> <deltaLo> ...
-                // bytes[2] = support flags (bit0=deltaP, bit1=inletP, bit2=outletP)
-                // bytes[3..4] = DPF differential pressure (signed 16-bit)
-                // Formula: ((256 × B) + C) / 100 → kPa
-                // On this ECU: support=0x02 (inlet only), deltaP bytes = 00 00 at idle = 0.0 kPa ✓
-                val rawSigned = ((bytes[3].toInt() and 0xFF) shl 8) or (bytes[4].toInt() and 0xFF)
-                // Interpret as signed 16-bit (two's complement)
-                val signed16 = if (rawSigned > 0x7FFF) rawSigned - 0x10000 else rawSigned
-                val kPa = signed16 / 100f
-                // Only update if value is physically plausible (−5 to +50 kPa)
+            CMD_DPF_PRESSURE -> if (checkMode01(0x7A) && bytes.size >= 5) {
+                // 41 7A <support> <deltaHi> <deltaLo>
+                // Formula: signed16 / 100 = kPa. Plausible: 0..50 kPa.
+                val rawSigned = (b(3) shl 8) or b(4)
+                val signed16  = if (rawSigned > 0x7FFF) rawSigned - 0x10000 else rawSigned
+                val kPa       = signed16 / 100f
                 if (kPa >= -5f) DpfRepository.updateDpfDeltaPressure(kPa.coerceAtLeast(0f))
             }
         }
