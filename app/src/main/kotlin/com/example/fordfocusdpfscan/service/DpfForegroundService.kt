@@ -59,6 +59,13 @@ class DpfForegroundService : LifecycleService() {
     private var lastDataPointTime = 0L
     private val DATA_POINT_INTERVAL_MS = 30_000L
 
+    /** Throttle persistent notification updates — max once per second.
+     *  Without this, every OBD PID response (10+ per poll cycle) triggers a
+     *  separate NotificationManagerCompat.notify() call, causing severe lag
+     *  in the notification drawer. */
+    private var lastNotifUpdateTime = 0L
+    private val NOTIF_UPDATE_INTERVAL_MS = 1_000L
+
     // ── Oil change reminder — fire once per threshold crossing ────────────────
     /** km threshold that triggers the reminder notification. */
     private val OIL_CHANGE_WARN_KM = 10_000L
@@ -144,15 +151,21 @@ class DpfForegroundService : LifecycleService() {
     private fun observeDpfData() {
         lifecycleScope.launch {
             DpfRepository.dpfData.collectLatest { data ->
-                // Update the persistent "monitoring" notification with latest values
-                val updatedNotif = NotificationHelper.buildPersistentNotification(
-                    context = this@DpfForegroundService,
-                    dpfData = data
-                )
-                NotificationHelper.updatePersistentNotification(
-                    this@DpfForegroundService,
-                    updatedNotif
-                )
+                // Throttle notification updates — each OBD PID response triggers a
+                // separate StateFlow emission, so without throttling we'd call
+                // notify() 10+ times per second, causing visible lag in the drawer.
+                val now = System.currentTimeMillis()
+                if (now - lastNotifUpdateTime >= NOTIF_UPDATE_INTERVAL_MS) {
+                    lastNotifUpdateTime = now
+                    val updatedNotif = NotificationHelper.buildPersistentNotification(
+                        context = this@DpfForegroundService,
+                        dpfData = data
+                    )
+                    NotificationHelper.updatePersistentNotification(
+                        this@DpfForegroundService,
+                        updatedNotif
+                    )
+                }
 
                 // ── Oil change reminder ───────────────────────────────────────
                 // Fire once when km ≥ 10.000; reset flag if km drops (oil changed).

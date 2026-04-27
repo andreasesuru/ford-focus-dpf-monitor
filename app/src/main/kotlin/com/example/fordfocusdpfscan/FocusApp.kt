@@ -30,5 +30,11 @@ class FocusApp : Application() {
 
         // Create notification channels — must happen before any notification is posted
         NotificationHelper.createChannels(this)
+
+        // Pre-warm the Ford Focus icon bitmap on a background thread.
+        // ic_ford_focus.png is 5 MB — decoding it on the main thread when the first
+        // regen notification fires caused a ServiceANR. Doing it here at startup
+        // (background thread) ensures it is ready before any notification fires.
+        NotificationHelper.warmIconCache(this)
     }
 }

@@ -59,20 +59,34 @@ object NotificationHelper {
     // ── Whether channels have been created ────────────────────────────────────
     private var channelsCreated = false
 
-    // ── Cached icon bitmap — decoded once, reused for all notifications ───────
-    // ic_ford_focus.png is 5 MB on disk; decoding it on every notification
-    // call caused visible UI lag. We scale it to 128×128 dp and cache it.
+    // ── Cached icon bitmap — decoded once off the main thread, then reused ──────
+    // ic_ford_focus.png is 5 MB on disk. Decoding it synchronously on the main
+    // thread (first event notification) caused a ServiceANR. We now pre-warm the
+    // cache from a background thread in warmIconCache(), called at app startup.
+    // getIconBitmap() falls back to a tiny placeholder until the cache is ready.
     private var cachedIconBitmap: android.graphics.Bitmap? = null
-    private fun getIconBitmap(context: Context): android.graphics.Bitmap {
-        return cachedIconBitmap ?: run {
-            val size = (128 * context.resources.displayMetrics.density).toInt()
-            val raw = BitmapFactory.decodeResource(context.resources, R.drawable.ic_ford_focus)
-            val scaled = android.graphics.Bitmap.createScaledBitmap(raw, size, size, true)
-            if (scaled !== raw) raw.recycle()
-            cachedIconBitmap = scaled
-            scaled
-        }
+
+    /**
+     * Decode and cache ic_ford_focus.png on a background thread.
+     * Call this from FocusApp.onCreate() so the bitmap is ready before
+     * the first regen notification fires.
+     */
+    fun warmIconCache(context: Context) {
+        if (cachedIconBitmap != null) return
+        val appContext = context.applicationContext
+        Thread {
+            val size = (128 * appContext.resources.displayMetrics.density).toInt()
+            val raw = BitmapFactory.decodeResource(appContext.resources, R.drawable.ic_ford_focus)
+            if (raw != null) {
+                val scaled = android.graphics.Bitmap.createScaledBitmap(raw, size, size, true)
+                if (scaled !== raw) raw.recycle()
+                cachedIconBitmap = scaled
+                Log.d(TAG, "Icon bitmap cached (${scaled.width}×${scaled.height})")
+            }
+        }.start()
     }
+
+    private fun getIconBitmap(context: Context): android.graphics.Bitmap? = cachedIconBitmap
 
     // ═════════════════════════════════════════════════════════════════════════
     // Channel creation — must be called before posting any notification
@@ -336,7 +350,7 @@ object NotificationHelper {
                     .setContentTitle(title)
                     .setContentText(text)
                     .setContentIntent(carTapIntent)     // tap → DpfScreen sul display
-                    .setLargeIcon(getIconBitmap(context))
+                    .apply { getIconBitmap(context)?.let { setLargeIcon(it) } }
                     .build()
             )
             .build()
@@ -389,7 +403,7 @@ object NotificationHelper {
                     .setContentTitle(title)
                     .setContentText(text)
                     .setContentIntent(carTapIntent)     // tap → DpfScreen sul display
-                    .setLargeIcon(getIconBitmap(context))
+                    .apply { getIconBitmap(context)?.let { setLargeIcon(it) } }
                     .build()
             )
             .build()

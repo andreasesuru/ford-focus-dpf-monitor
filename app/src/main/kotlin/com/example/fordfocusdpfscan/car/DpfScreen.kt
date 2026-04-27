@@ -43,6 +43,12 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
     private var previousRegenStatus: RegenStatus = RegenStatus.INACTIVE
     private var currentData: DpfData = DpfData()
 
+    /** Throttle invalidate() — the Car App Library template API has its own
+     *  rate limit (~1/s) and calling it faster floods the host renderer,
+     *  causing visible lag on the car display and on the phone. */
+    private var lastInvalidateTime = 0L
+    private val INVALIDATE_INTERVAL_MS = 1_000L
+
     init {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
@@ -70,6 +76,9 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
     // Safe wrappers — guard against OutOfCarLifecycle if the session ends
     // while a coroutine emission is in-flight.
     private fun safeInvalidate() {
+        val now = System.currentTimeMillis()
+        if (now - lastInvalidateTime < INVALIDATE_INTERVAL_MS) return
+        lastInvalidateTime = now
         try {
             invalidate()
         } catch (e: IllegalStateException) {
