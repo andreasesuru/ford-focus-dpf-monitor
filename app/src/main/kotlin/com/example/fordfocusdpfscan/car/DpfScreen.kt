@@ -4,6 +4,7 @@ import androidx.car.app.CarContext
 import androidx.car.app.CarToast
 import androidx.car.app.Screen
 import androidx.car.app.model.*
+import android.util.Log
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.example.fordfocusdpfscan.R
@@ -35,26 +36,53 @@ import kotlinx.coroutines.flow.collectLatest
 
 class DpfScreen(carContext: CarContext) : Screen(carContext) {
 
+    private val TAG = "DpfScreen"
+
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var previousRegenStatus: RegenStatus = RegenStatus.INACTIVE
     private var currentData: DpfData = DpfData()
 
     init {
-        scope.launch {
-            DpfRepository.dpfData.collectLatest { data ->
-                if (data.regenStatus != previousRegenStatus) {
-                    showCarToast(data.regenStatus)
-                    previousRegenStatus = data.regenStatus
-                }
-                currentData = data
-                invalidate()
-            }
-        }
-
         lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onDestroy(owner: LifecycleOwner) { scope.cancel() }
+            override fun onStart(owner: LifecycleOwner) {
+                // Start collecting only when the screen is visible on the car display.
+                // This prevents OutOfCarLifecycle exceptions caused by invalidate() /
+                // CarToast calls before the session is fully active.
+                scope.launch {
+                    DpfRepository.dpfData.collectLatest { data ->
+                        if (data.regenStatus != previousRegenStatus) {
+                            safeShowCarToast(data.regenStatus)
+                            previousRegenStatus = data.regenStatus
+                        }
+                        currentData = data
+                        safeInvalidate()
+                    }
+                }
+            }
+
+            override fun onDestroy(owner: LifecycleOwner) {
+                scope.cancel()
+            }
         })
+    }
+
+    // Safe wrappers — guard against OutOfCarLifecycle if the session ends
+    // while a coroutine emission is in-flight.
+    private fun safeInvalidate() {
+        try {
+            invalidate()
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "invalidate() called outside car lifecycle — ignored: ${e.message}")
+        }
+    }
+
+    private fun safeShowCarToast(newStatus: RegenStatus) {
+        try {
+            showCarToast(newStatus)
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "CarToast called outside car lifecycle — ignored: ${e.message}")
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════════
