@@ -11,10 +11,10 @@ import android.media.AudioAttributes
 import android.net.Uri
 import android.os.Build
 import android.util.Log
+import android.graphics.BitmapFactory
 import androidx.car.app.notification.CarAppExtender
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.graphics.drawable.IconCompat
 import com.example.fordfocusdpfscan.R
 import com.example.fordfocusdpfscan.data.DpfData
 import com.example.fordfocusdpfscan.data.RegenStatus
@@ -321,7 +321,7 @@ object NotificationHelper {
                     .setContentTitle(title)
                     .setContentText(text)
                     .setContentIntent(carTapIntent)     // tap → DpfScreen sul display
-                    .setLargeIcon(IconCompat.createWithResource(context, R.drawable.ic_ford_focus))
+                    .setLargeIcon(BitmapFactory.decodeResource(context.resources, R.drawable.ic_ford_focus))
                     .build()
             )
             .build()
@@ -374,7 +374,7 @@ object NotificationHelper {
                     .setContentTitle(title)
                     .setContentText(text)
                     .setContentIntent(carTapIntent)     // tap → DpfScreen sul display
-                    .setLargeIcon(IconCompat.createWithResource(context, R.drawable.ic_ford_focus))
+                    .setLargeIcon(BitmapFactory.decodeResource(context.resources, R.drawable.ic_ford_focus))
                     .build()
             )
             .build()
