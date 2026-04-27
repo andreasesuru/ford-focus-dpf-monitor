@@ -116,7 +116,7 @@
             </intent-filter>
             <meta-data
                 android:name="androidx.car.app.minCarApiLevel"
-                android:value="2" />
+                android:value="@integer/min_car_api_level" />
         </service>
 
         <!-- ─────────────────────────────────────────────────────────────────

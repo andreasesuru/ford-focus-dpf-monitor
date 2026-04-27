@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Minimum Car App API level required by the Android Auto host.
+         Must be an integer resource so Bundle.getInt() reads it correctly. -->
+    <integer name="min_car_api_level">2</integer>
+</resources>
