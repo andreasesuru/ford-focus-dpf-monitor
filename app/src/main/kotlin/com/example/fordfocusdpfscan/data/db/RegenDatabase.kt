@@ -15,7 +15,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities  = [RegenSession::class, RegenDataPoint::class],
-    version   = 1,
+    version   = 2,   // bumped to clear false-positive regen records from pre-v4.3
     exportSchema = false
 )
 abstract class RegenDatabase : RoomDatabase() {
