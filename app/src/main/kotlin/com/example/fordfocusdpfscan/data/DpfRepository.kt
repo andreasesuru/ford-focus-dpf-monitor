@@ -68,6 +68,15 @@ object DpfRepository {
      *  Guards against false triggers at engine startup. */
     private var wasMoving = false
 
+    /** Consecutive samples with speed < [COOLDOWN_STOPPED_KMH] and RPM at idle.
+     *  Must reach [COOLDOWN_STOPPED_SAMPLES_NEEDED] before the countdown starts —
+     *  prevents false triggers at red lights or in slow traffic. */
+    private var stoppedSampleCount = 0
+
+    /** Number of consecutive stopped samples required before arming the cooldown.
+     *  OBD2 polls every ~3 s → 5 samples ≈ 15 seconds stopped. */
+    private const val COOLDOWN_STOPPED_SAMPLES_NEEDED = 5
+
     /** Running cooldown coroutine (null when inactive). */
     private var cooldownJob: Job? = null
 
@@ -330,7 +339,12 @@ object DpfRepository {
         val engineAtIdle = data.rpmValue in COOLDOWN_IDLE_RPM_RANGE
         val vehicleStopped = data.speedKmh in 0f..COOLDOWN_STOPPED_KMH
 
-        if (engineAtIdle && vehicleStopped) startCooldown()
+        if (engineAtIdle && vehicleStopped) {
+            stoppedSampleCount++
+            if (stoppedSampleCount >= COOLDOWN_STOPPED_SAMPLES_NEEDED) startCooldown()
+        } else {
+            stoppedSampleCount = 0   // moved again (green light, traffic) → reset
+        }
     }
 
     /** Records the start timestamp in DpfData (one StateFlow emit), then waits
@@ -352,6 +366,7 @@ object DpfRepository {
         cooldownJob?.cancel()
         cooldownJob = null
         wasMoving = false
+        stoppedSampleCount = 0
         _dpfData.value = _dpfData.value.copy(cooldownStartedAt = -1L)
     }
 }
