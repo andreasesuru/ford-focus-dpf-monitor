@@ -40,22 +40,22 @@
     <string name="notif_channel_name">DPF Alerts</string>
     <string name="notif_channel_desc">Alerts for DPF regeneration events and BLE connection status</string>
 
-    <!-- Notification titles / texts -->
+    <!-- Notification titles / texts (Italian) -->
     <string name="notif_persistent_title">FOCUS — DPF Monitor</string>
-    <string name="notif_warning_title">⚠ DPF High Temperature</string>
-    <string name="notif_warning_text">EGT above 450°C. Avoid switching off the engine.</string>
-    <string name="notif_active_title">🔴 DPF Active Regeneration!</string>
-    <string name="notif_active_text">Do NOT turn off the engine!</string>
-    <string name="notif_complete_title">✅ Regeneration Complete</string>
-    <string name="notif_complete_text">DPF cleaned successfully. Safe to stop the engine.</string>
-    <string name="notif_ble_lost_title">📵 OBD Disconnected</string>
-    <string name="notif_ble_lost_text">DPF monitoring suspended. Tap to reconnect.</string>
+    <string name="notif_warning_title">Temperatura EGT alta</string>
+    <string name="notif_warning_text">EGT sopra 450°C. Non spegnere il motore.</string>
+    <string name="notif_active_title">Rigenerazione DPF attiva!</string>
+    <string name="notif_active_text">NON spegnere il motore!</string>
+    <string name="notif_complete_title">Rigenerazione completata</string>
+    <string name="notif_complete_text">DPF pulito. Puoi spegnere il motore.</string>
+    <string name="notif_ble_lost_title">OBD disconnesso</string>
+    <string name="notif_ble_lost_text">Monitoraggio DPF sospeso. Tocca per ricollegare.</string>
 
-    <!-- Android Auto CarToast messages -->
-    <string name="toast_warning">⚠ High EGT — avoid stopping the engine</string>
-    <string name="toast_active">🔴 Active regen started! Do NOT turn off engine!</string>
-    <string name="toast_complete">✅ Regen complete. Safe to stop the engine.</string>
-    <string name="toast_ble_lost">📵 OBD dongle disconnected</string>
+    <!-- CarToast messages (phone UI, not used in Auto) -->
+    <string name="toast_warning">EGT alta — evita di spegnere il motore</string>
+    <string name="toast_active">Regen attiva! NON spegnere il motore!</string>
+    <string name="toast_complete">Regen completata. Puoi spegnere il motore.</string>
+    <string name="toast_ble_lost">OBD dongle disconnesso</string>
 
     <!-- Android Auto screen — row titles -->
     <string name="car_screen_title">FOCUS — DPF Monitor</string>

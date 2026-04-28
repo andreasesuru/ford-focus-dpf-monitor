@@ -99,11 +99,11 @@ data class DpfData(
     val bleConnected: Boolean = false,
 
     // ── Turbo cooldown timer ──────────────────────────────────────────────────
-    /** Seconds remaining in the post-trip turbo cooldown countdown.
-     *  -1 = not active (no trip detected or cooldown not needed).
-     *   0 = cooldown complete — safe to turn off the engine.
-     *  >0 = countdown in progress — do not turn off yet. */
-    val cooldownSecondsLeft: Int = -1
+    /** Epoch ms timestamp when the post-trip cooldown started.
+     *  -1L = not active.
+     *   0L = cooldown complete — safe to turn off the engine.
+     *  >0L = countdown in progress (use with COOLDOWN_DURATION_MS to compute seconds left). */
+    val cooldownStartedAt: Long = -1L
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════

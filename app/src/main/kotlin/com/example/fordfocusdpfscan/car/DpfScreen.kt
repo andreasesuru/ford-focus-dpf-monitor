@@ -48,7 +48,7 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var previousRegenStatus: RegenStatus = RegenStatus.INACTIVE
-    private var previousCooldownSeconds: Int = -1
+    private var previousCooldownStartedAt: Long = -1L
     private var currentData: DpfData = DpfData()
 
     /** Throttle invalidate() — Car App Library template API ha un rate limit ~1/s */
@@ -64,19 +64,19 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
                             safeShowCarToast(data.regenStatus)
                             previousRegenStatus = data.regenStatus
                         }
-                        // CarToast when cooldown countdown reaches zero
-                        if (data.cooldownSecondsLeft == 0 && previousCooldownSeconds != 0) {
+                        // CarToast when cooldown completes (startedAt transitions to 0L)
+                        if (data.cooldownStartedAt == 0L && previousCooldownStartedAt > 0L) {
                             try {
                                 CarToast.makeText(
                                     carContext,
-                                    "Raffreddamento completato — puoi spegnere ✓",
+                                    "Raffreddamento completato — puoi spegnere",
                                     CarToast.LENGTH_LONG
                                 ).show()
                             } catch (e: IllegalStateException) {
                                 Log.w(TAG, "CarToast cooldown outside car lifecycle — ignored")
                             }
                         }
-                        previousCooldownSeconds = data.cooldownSecondsLeft
+                        previousCooldownStartedAt = data.cooldownStartedAt
                         currentData = data
                         safeInvalidate()
                     }
@@ -204,15 +204,21 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
 
     private fun buildMotoreRow(data: DpfData): Row {
         // ── Cooldown countdown — override normal Motore content ───────────────
+        // Seconds are computed from the stored timestamp — no per-second StateFlow updates,
+        // which would hammer the Car App Library template API and freeze the screen.
         when {
-            data.cooldownSecondsLeft > 0 -> return Row.Builder()
-                .setTitle("⏱ Raffredda Turbo — ${data.cooldownSecondsLeft}s")
-                .addText(coloredSpan("Non spegnere ancora il motore", CarColor.YELLOW))
-                .build()
-
-            data.cooldownSecondsLeft == 0 -> return Row.Builder()
+            data.cooldownStartedAt > 0L -> {
+                val elapsed = System.currentTimeMillis() - data.cooldownStartedAt
+                val secondsLeft = ((DpfRepository.COOLDOWN_DURATION_MS - elapsed) / 1000L)
+                    .coerceAtLeast(0L)
+                return Row.Builder()
+                    .setTitle("Raffredda Turbo — ${secondsLeft}s")
+                    .addText(coloredSpan("Non spegnere ancora il motore", CarColor.YELLOW))
+                    .build()
+            }
+            data.cooldownStartedAt == 0L -> return Row.Builder()
                 .setTitle("Raffreddamento completato")
-                .addText(coloredSpan("Puoi spegnere il motore ✓", CarColor.GREEN))
+                .addText(coloredSpan("Puoi spegnere il motore", CarColor.GREEN))
                 .build()
         }
 
