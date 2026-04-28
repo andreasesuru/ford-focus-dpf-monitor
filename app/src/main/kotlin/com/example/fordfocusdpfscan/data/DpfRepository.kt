@@ -2,6 +2,12 @@ package com.example.fordfocusdpfscan.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,6 +48,29 @@ object DpfRepository {
 
     /** SharedPreferences instance — initialised once via [init]. */
     private lateinit var prefs: SharedPreferences
+
+    // ── Turbo cooldown state ──────────────────────────────────────────────────
+    /** Duration of the post-trip cooldown in seconds. */
+    private const val COOLDOWN_DURATION_S = 45
+
+    /** EGT threshold above which we consider the engine "hot" (recent driving). */
+    private const val COOLDOWN_HOT_EGT_THRESHOLD = 150f
+
+    /** RPM range considered "engine at idle" (running but not being driven).
+     *  Ford Focus 1.5 TDCi idles at ~750 RPM. */
+    private val COOLDOWN_IDLE_RPM_RANGE = 500f..1100f
+
+    /** Vehicle speed threshold below which we consider the car stopped (km/h). */
+    private const val COOLDOWN_STOPPED_KMH = 3f
+
+    /** True once EGT or load crossed the threshold — a trip was detected. */
+    private var wasHot = false
+
+    /** Running cooldown coroutine (null when inactive). */
+    private var cooldownJob: Job? = null
+
+    /** Dedicated scope for the cooldown timer. Survives across data updates. */
+    private val cooldownScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     // ── Notification callback ─────────────────────────────────────────────────
     /**
@@ -99,6 +128,8 @@ object DpfRepository {
             regenStrategy = RegenStrategy.EGT_FALLBACK
         )
         applyStatusChange(previous, newData)
+        if (celsius > COOLDOWN_HOT_EGT_THRESHOLD) wasHot = true
+        checkAndStartCooldown(_dpfData.value)
     }
 
     /**
@@ -151,11 +182,14 @@ object DpfRepository {
     /** Updates vehicle speed in km/h (PID 01 0D). */
     fun updateSpeed(kmh: Float) {
         _dpfData.value = _dpfData.value.copy(speedKmh = kmh)
+        checkAndStartCooldown(_dpfData.value)
     }
 
     /** Updates engine load % (PID 01 04). Formula: A*100/255. */
     fun updateEngineLoad(pct: Float) {
         _dpfData.value = _dpfData.value.copy(engineLoadPct = pct)
+        if (pct > 25f) wasHot = true
+        checkAndStartCooldown(_dpfData.value)
     }
 
     /** Updates intake MAP in kPa (PID 01 0B). Subtract baroKpa for boost delta. */
@@ -180,6 +214,7 @@ object DpfRepository {
 
     fun updateBleConnected(connected: Boolean) {
         _dpfData.value = _dpfData.value.copy(bleConnected = connected)
+        if (!connected) resetCooldown()
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -272,5 +307,55 @@ object DpfRepository {
                 regenStrategy = RegenStrategy.NONE
             )
         }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Turbo cooldown — private helpers
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Called after every EGT or load update.
+     * Starts the cooldown countdown when ALL conditions are met:
+     *  • Engine was "hot" during this trip (EGT > 150°C or load > 25%)
+     *  • Engine is now at idle (load < 12%, RPM in 500–1300)
+     *  • No active regeneration in progress
+     *  • Cooldown is not already running
+     */
+    private fun checkAndStartCooldown(data: DpfData) {
+        if (!wasHot) return
+        if (cooldownJob != null) return
+        if (data.cooldownSecondsLeft >= 0) return
+        if (data.regenStatus == RegenStatus.ACTIVE || data.regenStatus == RegenStatus.WARNING) return
+
+        // "At idle" = engine running in idle RPM range AND vehicle stopped.
+        // We use speed instead of engine load because diesel OBD2 load reads
+        // 25-35% even at idle (it's relative to peak torque, not fuel delivery).
+        val engineRunningAtIdle = data.rpmValue in COOLDOWN_IDLE_RPM_RANGE
+        val vehicleStopped = data.speedKmh in 0f..COOLDOWN_STOPPED_KMH
+
+        if (engineRunningAtIdle && vehicleStopped) startCooldown()
+    }
+
+    /** Launches the 45-second countdown, updating [DpfData.cooldownSecondsLeft] every second. */
+    private fun startCooldown() {
+        cooldownJob = cooldownScope.launch {
+            for (s in COOLDOWN_DURATION_S downTo 1) {
+                _dpfData.value = _dpfData.value.copy(cooldownSecondsLeft = s)
+                delay(1_000L)
+            }
+            // Countdown done — mark as complete (0 = safe to turn off)
+            _dpfData.value = _dpfData.value.copy(cooldownSecondsLeft = 0)
+            // Show "done" for 15 s, then silently reset
+            delay(15_000L)
+            resetCooldown()
+        }
+    }
+
+    /** Cancels any running countdown and clears all cooldown state. */
+    private fun resetCooldown() {
+        cooldownJob?.cancel()
+        cooldownJob = null
+        wasHot = false
+        _dpfData.value = _dpfData.value.copy(cooldownSecondsLeft = -1)
     }
 }
