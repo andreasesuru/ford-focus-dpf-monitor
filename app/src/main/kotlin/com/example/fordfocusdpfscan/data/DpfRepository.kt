@@ -83,7 +83,7 @@ object DpfRepository {
     /** Dedicated scope for the cooldown timer. Survives across data updates. */
     private val cooldownScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-    // ── Notification callback ─────────────────────────────────────────────────
+    // ── Notification callbacks ────────────────────────────────────────────────
     /**
      * Lambda invoked by the repository whenever the [RegenStatus] changes.
      * Set by [DpfForegroundService] to trigger notifications without a hard
@@ -97,6 +97,14 @@ object DpfRepository {
      * Set by [DpfForegroundService] which owns [RegenHistoryRepository].
      */
     var onRegenSessionEvent: ((event: String, data: DpfData) -> Unit)? = null
+
+    // ── Turbo cooldown callbacks (set by DpfForegroundService) ───────────────
+    /** Fired once when the 45-second cooldown starts. */
+    var onCooldownStarted: (() -> Unit)? = null
+    /** Fired once when the 45-second countdown reaches zero. */
+    var onCooldownComplete: (() -> Unit)? = null
+    /** Fired if the driver moved the car before the countdown finished. */
+    var onCooldownCancelled: (() -> Unit)? = null
 
     // ═════════════════════════════════════════════════════════════════════════
     // Initialisation
@@ -193,6 +201,11 @@ object DpfRepository {
         _dpfData.value = _dpfData.value.copy(speedKmh = kmh)
         // Arm the cooldown only once the car has actually moved
         if (kmh > COOLDOWN_ARM_SPEED_KMH) wasMoving = true
+        // Cancel countdown if the driver moves again during the 45s window
+        if (kmh > COOLDOWN_STOPPED_KMH && cooldownJob?.isActive == true) {
+            resetCooldown(fireCancelledCallback = true)
+            return
+        }
         checkAndStartCooldown(_dpfData.value)
     }
 
@@ -223,7 +236,7 @@ object DpfRepository {
 
     fun updateBleConnected(connected: Boolean) {
         _dpfData.value = _dpfData.value.copy(bleConnected = connected)
-        if (!connected) resetCooldown()  // reset everything on disconnect
+        if (!connected) resetCooldown(fireCancelledCallback = false)  // reset on disconnect, no notification
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -330,7 +343,6 @@ object DpfRepository {
     private fun checkAndStartCooldown(data: DpfData) {
         if (!wasMoving) return                          // car never actually moved this session
         if (cooldownJob != null) return                 // already running
-        if (data.cooldownStartedAt >= 0L) return        // already started or complete
         if (data.regenStatus == RegenStatus.ACTIVE ||
             data.regenStatus == RegenStatus.WARNING) return  // don't interrupt regen
 
@@ -347,26 +359,32 @@ object DpfRepository {
         }
     }
 
-    /** Records the start timestamp in DpfData (one StateFlow emit), then waits
-     *  [COOLDOWN_DURATION_MS] and marks complete (second emit). No per-second updates —
-     *  DpfScreen computes remaining seconds from the timestamp on each template rebuild. */
+    /** Fires [onCooldownStarted] callback, waits [COOLDOWN_DURATION_MS], then fires
+     *  [onCooldownComplete]. No StateFlow updates — cooldown lives entirely in
+     *  background notifications managed by DpfForegroundService. */
     private fun startCooldown() {
-        val startedAt = System.currentTimeMillis()
-        _dpfData.value = _dpfData.value.copy(cooldownStartedAt = startedAt)
+        onCooldownStarted?.invoke()
         cooldownJob = cooldownScope.launch {
             delay(COOLDOWN_DURATION_MS)
-            _dpfData.value = _dpfData.value.copy(cooldownStartedAt = 0L)  // 0L = complete
-            delay(15_000L)   // show "safe to stop" for 15s, then silently reset
-            resetCooldown()
+            onCooldownComplete?.invoke()
+            delay(15_000L)   // give service time to show "safe to stop" notif, then reset
+            resetCooldown(fireCancelledCallback = false)
         }
     }
 
-    /** Cancels any running countdown and clears all cooldown state. */
-    private fun resetCooldown() {
+    /**
+     * Cancels any running countdown and clears all cooldown state.
+     * [fireCancelledCallback] = true → notify the driver the countdown was cancelled
+     * (e.g. car moved again). false → silent reset (BLE disconnect, or after completion).
+     */
+    private fun resetCooldown(fireCancelledCallback: Boolean = true) {
+        val wasActive = cooldownJob?.isActive == true
         cooldownJob?.cancel()
         cooldownJob = null
         wasMoving = false
         stoppedSampleCount = 0
-        _dpfData.value = _dpfData.value.copy(cooldownStartedAt = -1L)
+        if (fireCancelledCallback && wasActive) {
+            onCooldownCancelled?.invoke()
+        }
     }
 }

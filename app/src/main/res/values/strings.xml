@@ -87,4 +87,10 @@
     <string name="car_toast_warning">⚠ EGT alta — evita di spegnere il motore</string>
     <string name="car_toast_active">🔴 Regen attiva! NON spegnere il motore!</string>
     <string name="car_toast_complete">✅ Regen completata. Puoi spegnere il motore.</string>
+
+    <!-- Turbo cooldown notifications (Italian) -->
+    <string name="notif_cooldown_started_title">Raffreddamento turbo in corso</string>
+    <string name="notif_cooldown_started_text">Non spegnere il motore ancora — attendi 45 secondi.</string>
+    <string name="notif_cooldown_complete_title">Raffreddamento completato</string>
+    <string name="notif_cooldown_complete_text">Puoi spegnere il motore in sicurezza.</string>
 </resources>

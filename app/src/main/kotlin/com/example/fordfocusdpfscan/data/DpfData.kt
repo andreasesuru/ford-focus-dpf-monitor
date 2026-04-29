@@ -96,14 +96,7 @@ data class DpfData(
     // ── BLE connection ────────────────────────────────────────────────────────
     /** True when the GATT connection to Android-Vlink is active and services
      *  have been discovered. */
-    val bleConnected: Boolean = false,
-
-    // ── Turbo cooldown timer ──────────────────────────────────────────────────
-    /** Epoch ms timestamp when the post-trip cooldown started.
-     *  -1L = not active.
-     *   0L = cooldown complete — safe to turn off the engine.
-     *  >0L = countdown in progress (use with COOLDOWN_DURATION_MS to compute seconds left). */
-    val cooldownStartedAt: Long = -1L
+    val bleConnected: Boolean = false
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -22,7 +22,7 @@ import kotlinx.coroutines.flow.collectLatest
 // ═══════════════════════════════════════════════════════════════════════════════
 // DpfScreen.kt — Android Auto main dashboard screen.
 //
-// ListTemplate — 4 righe:
+// ListTemplate — 3 righe (fit su schermo, nessun scroll):
 //   ┌─────────────────────────────────────────────────────┐
 //   │ Filtro DPF                                          │
 //   │ Soot X%  ·  Load X%  ·  ΔP X kPa                  │
@@ -30,15 +30,14 @@ import kotlinx.coroutines.flow.collectLatest
 //   │ Rigenerazione                                       │
 //   │ Inattiva — puoi spegnere  ·  Flag ECU              │
 //   ├─────────────────────────────────────────────────────┤
-//   │ Temperature                                         │
-//   │ EGT X°C  ·  Refrig. X°C                           │
-//   ├─────────────────────────────────────────────────────┤
-//   │ Motore                                              │
-//   │ Carico X%  ·  Boost X kPa  ·  Regen X km          │
+//   │ Info Motore                                         │
+//   │ EGT X°C  ·  Refrig. X°C  ·  Carico X%  ·  Boost X │
 //   └─────────────────────────────────────────────────────┘
 //
 // ActionStrip: [Ricollega] — riconnette il dongle OBD2
 // CarToast: su ogni transizione di stato (WARNING / ACTIVE / COMPLETED)
+// Il timer di raffreddamento turbo viene gestito come notifica di background
+// da DpfForegroundService — non più mostrato su questa schermata.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class DpfScreen(carContext: CarContext) : Screen(carContext) {
@@ -48,7 +47,6 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     private var previousRegenStatus: RegenStatus = RegenStatus.INACTIVE
-    private var previousCooldownStartedAt: Long = -1L
     private var currentData: DpfData = DpfData()
 
     /** Throttle invalidate() — Car App Library template API ha un rate limit ~1/s */
@@ -64,19 +62,6 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
                             safeShowCarToast(data.regenStatus)
                             previousRegenStatus = data.regenStatus
                         }
-                        // CarToast when cooldown completes (startedAt transitions to 0L)
-                        if (data.cooldownStartedAt == 0L && previousCooldownStartedAt > 0L) {
-                            try {
-                                CarToast.makeText(
-                                    carContext,
-                                    "Raffreddamento completato — puoi spegnere",
-                                    CarToast.LENGTH_LONG
-                                ).show()
-                            } catch (e: IllegalStateException) {
-                                Log.w(TAG, "CarToast cooldown outside car lifecycle — ignored")
-                            }
-                        }
-                        previousCooldownStartedAt = data.cooldownStartedAt
                         currentData = data
                         safeInvalidate()
                     }
@@ -104,7 +89,7 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Template — ListTemplate con 4 righe
+    // Template — ListTemplate con 3 righe
     // ═════════════════════════════════════════════════════════════════════════
 
     override fun onGetTemplate(): Template {
@@ -117,8 +102,7 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
                 ItemList.Builder()
                     .addItem(buildDpfRow(data))
                     .addItem(buildRegenRow(data))
-                    .addItem(buildTempsRow(data))
-                    .addItem(buildMotoreRow(data))
+                    .addItem(buildInfoMotoreRow(data))
                     .build()
             )
             .build()
@@ -159,7 +143,7 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
             RegenStatus.INACTIVE  -> "Inattiva — puoi spegnere"  to CarColor.GREEN
             RegenStatus.WARNING   -> "Attenzione — non spegnere" to CarColor.YELLOW
             RegenStatus.ACTIVE    -> "ATTIVA — non spegnere!"    to CarColor.RED
-            RegenStatus.COMPLETED -> "Completata ✓"              to CarColor.GREEN
+            RegenStatus.COMPLETED -> "Completata"                to CarColor.GREEN
         }
 
         val source = when (data.regenStrategy) {
@@ -175,12 +159,25 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Riga 3 — TEMPERATURE: EGT · Refrigerante
+    // Riga 3 — INFO MOTORE: EGT · Refrigerante · Carico · Boost
+    //
+    // Boost = MAP (intakeMapKpa) − baro (baroKpa).
+    // Se baroKpa non è disponibile, usa 101.325 kPa come pressione atmosferica
+    // standard — così a minimo si legge ~0.00 bar invece di ~1.03 bar assoluto.
     // ═════════════════════════════════════════════════════════════════════════
 
-    private fun buildTempsRow(data: DpfData): Row {
+    private fun buildInfoMotoreRow(data: DpfData): Row {
         val egtStr     = if (data.egtCelsius >= 0)    "${data.egtCelsius.toInt()} °C"    else "– –"
         val coolantStr = if (data.coolantTempC >= 0)  "${data.coolantTempC.toInt()} °C"  else "– –"
+        val carico     = if (data.engineLoadPct >= 0) "${data.engineLoadPct.toInt()}%"   else "– –"
+
+        val boostStr = when {
+            data.intakeMapKpa >= 0 && data.baroKpa >= 0 ->
+                "${"%.2f".format((data.intakeMapKpa - data.baroKpa) / 100f)} bar"
+            data.intakeMapKpa >= 0 ->
+                "${"%.2f".format((data.intakeMapKpa - 101.325f) / 100f)} bar"
+            else -> "– –"
+        }
 
         val egtColor = when {
             data.egtCelsius < 0    -> CarColor.DEFAULT
@@ -190,56 +187,11 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
         }
 
         return Row.Builder()
-            .setTitle("Temperature")
-            .addText(coloredSpan("EGT $egtStr  ·  Refrig. $coolantStr", egtColor))
-            .build()
-    }
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // Riga 4 — MOTORE: Carico · Boost · km dall'ultima regen
-    //
-    // Boost = MAP (intakeMapKpa) − baro (baroKpa).
-    // Se baroKpa non è disponibile, mostra MAP assoluto come approssimazione.
-    // ═════════════════════════════════════════════════════════════════════════
-
-    private fun buildMotoreRow(data: DpfData): Row {
-        // ── Cooldown countdown — override normal Motore content ───────────────
-        // Seconds are computed from the stored timestamp — no per-second StateFlow updates,
-        // which would hammer the Car App Library template API and freeze the screen.
-        when {
-            data.cooldownStartedAt > 0L -> {
-                val elapsed = System.currentTimeMillis() - data.cooldownStartedAt
-                val secondsLeft = ((DpfRepository.COOLDOWN_DURATION_MS - elapsed) / 1000L)
-                    .coerceAtLeast(0L)
-                return Row.Builder()
-                    .setTitle("Raffredda Turbo — ${secondsLeft}s")
-                    .addText(coloredSpan("Non spegnere ancora il motore", CarColor.YELLOW))
-                    .build()
-            }
-            data.cooldownStartedAt == 0L -> return Row.Builder()
-                .setTitle("Raffreddamento completato")
-                .addText(coloredSpan("Puoi spegnere il motore", CarColor.GREEN))
-                .build()
-        }
-
-        // ── Normal Motore row ─────────────────────────────────────────────────
-        val carico = if (data.engineLoadPct >= 0) "${data.engineLoadPct.toInt()}%" else "– –"
-
-        // Boost = MAP - baro. Se baro non disponibile, usa 101.325 kPa (standard atm)
-        // così a minimo si legge ~0.00 bar invece di ~1.03 bar (MAP assoluto).
-        val boostStr = when {
-            data.intakeMapKpa >= 0 && data.baroKpa >= 0 ->
-                "${"%.2f".format((data.intakeMapKpa - data.baroKpa) / 100f)} bar"
-            data.intakeMapKpa >= 0 ->
-                "${"%.2f".format((data.intakeMapKpa - 101.325f) / 100f)} bar"
-            else -> "– –"
-        }
-
-        val regenKmStr = if (data.kmSinceLastRegen > 0) "${"%,d".format(data.kmSinceLastRegen)} km" else "– –"
-
-        return Row.Builder()
-            .setTitle("Motore")
-            .addText("Carico $carico  ·  Boost $boostStr  ·  Regen $regenKmStr")
+            .setTitle("Info Motore")
+            .addText(coloredSpan(
+                "EGT $egtStr  ·  Refrig. $coolantStr  ·  Carico $carico  ·  Boost $boostStr",
+                egtColor
+            ))
             .build()
     }
 

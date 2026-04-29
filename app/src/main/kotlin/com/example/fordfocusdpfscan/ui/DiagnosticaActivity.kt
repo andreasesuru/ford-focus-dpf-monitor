@@ -219,9 +219,10 @@ class DiagnosticaActivity : BaseTabActivity() {
             val delta = d.egtCelsius - d.egtPostDpfC
             cDeltaEgt.value.text = "%+.0f".format(delta)
             cDeltaEgt.setColor(when {
-                delta >= 0f    -> colorOk      // pre ≥ post: normal cooling
-                delta >= -50f  -> colorWarn    // post slightly hotter: regen warming
-                else           -> colorDanger  // post >> pre: active regen burn
+                delta >= 0f          -> colorOk      // pre ≥ post: normal cooling
+                delta >= -50f        -> colorWarn    // post slightly hotter: regen warming
+                d.egtCelsius < 400f  -> colorWarn    // EGT troppo fredda per regen reale — delta spuria
+                else                 -> colorDanger  // post >> pre E EGT calda: regen attiva confermata
             })
         } else {
             cDeltaEgt.value.text = "—"

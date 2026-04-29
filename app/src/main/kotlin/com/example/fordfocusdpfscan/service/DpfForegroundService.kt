@@ -94,6 +94,17 @@ class DpfForegroundService : LifecycleService() {
             onRegenSessionEvent(event, data)
         }
 
+        // Wire up turbo cooldown → background notifications
+        DpfRepository.onCooldownStarted = {
+            NotificationHelper.notifyCooldownStarted(this)
+        }
+        DpfRepository.onCooldownComplete = {
+            NotificationHelper.notifyCooldownComplete(this)
+        }
+        DpfRepository.onCooldownCancelled = {
+            NotificationHelper.cancelCooldownNotification(this)
+        }
+
         // Show the persistent foreground notification immediately
         // (required before any other work on Android 8+)
         startForeground(
@@ -121,10 +132,7 @@ class DpfForegroundService : LifecycleService() {
                 bleManager.disconnect()
                 stopSelf()
             }
-            ACTION_RECONNECT  -> {
-                bleManager.disconnect()
-                bleManager.connect()
-            }
+            ACTION_RECONNECT  -> bleManager.reconnect()
         }
         return START_STICKY  // Restart the service if killed by the OS
     }
@@ -133,8 +141,11 @@ class DpfForegroundService : LifecycleService() {
         super.onDestroy()
         bleManager.disconnect()
         BleManagerHolder.instance = null
-        DpfRepository.onRegenStatusChanged = null
-        DpfRepository.onRegenSessionEvent  = null
+        DpfRepository.onRegenStatusChanged  = null
+        DpfRepository.onRegenSessionEvent   = null
+        DpfRepository.onCooldownStarted     = null
+        DpfRepository.onCooldownComplete    = null
+        DpfRepository.onCooldownCancelled   = null
         Log.d(TAG, "Service destroyed")
     }
 

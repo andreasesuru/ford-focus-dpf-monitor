@@ -343,6 +343,31 @@ class BleManager(private val context: Context) {
         }
     }
 
+    /**
+     * Disconnects from the current device, then reconnects using the same
+     * transport that was used for the last successful connection:
+     *   • If the last device is still in Android's bonded set → SPP (connectSpp)
+     *   • Otherwise → BLE scan (connect)
+     *
+     * This fixes the "Ricollega" button which previously always triggered a
+     * BLE scan even when the user was connected via Classic Bluetooth SPP.
+     */
+    fun reconnect() {
+        val target = lastConnectedDevice
+        val wasSpp = usingSpp
+        scope.launch {
+            disconnect()
+            delay(1_500L)
+            if (target != null && wasSpp) {
+                Log.d(TAG, "Reconnect → SPP to ${target.name}")
+                connectSpp(target)
+            } else {
+                Log.d(TAG, "Reconnect → BLE scan")
+                connect()
+            }
+        }
+    }
+
     fun pausePolling() {
         pollingPaused = true
         pollingJob?.cancel()

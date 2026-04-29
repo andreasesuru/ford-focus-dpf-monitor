@@ -46,12 +46,17 @@ object NotificationHelper {
     const val NOTIF_ID_EVENT       = 1002
     const val NOTIF_ID_CONNECTION  = 1003
     const val NOTIF_ID_SERVICE     = 1004   // tagliando / service reminder
+    const val NOTIF_ID_COOLDOWN    = 1005   // turbo cooldown timer
 
     // ── Channel IDs ───────────────────────────────────────────────────────────
     private const val CHANNEL_PERSISTENT  = "focus_persistent"
-    private const val CHANNEL_REGEN       = "focus_regen"        // custom MP3 sound
+    // focus_regen_v2: bumped from v1 because Android caches channel sound settings
+    // after first creation and ignores subsequent updates. New ID forces a fresh
+    // channel with the correct dpf_monitor_sound.mp3 audio attributes.
+    private const val CHANNEL_REGEN       = "focus_regen_v2"     // custom MP3 sound
     private const val CHANNEL_CONNECTION  = "focus_connection"   // silent
     private const val CHANNEL_SERVICE     = "focus_service"      // silent, service reminders
+    private const val CHANNEL_COOLDOWN    = "focus_cooldown"     // silent, turbo cooldown
 
     // ── Notification timeout ──────────────────────────────────────────────────
     private const val EVENT_TIMEOUT_MS = 5_000L   // heads-up dismisses after 5 s
@@ -158,7 +163,20 @@ object NotificationHelper {
             enableVibration(false)
         }
 
-        manager.createNotificationChannels(listOf(persistentChannel, regenChannel, connectionChannel, serviceChannel))
+        // ── Channel 5: Turbo cooldown (silent — informational only) ──────────
+        val cooldownChannel = NotificationChannel(
+            CHANNEL_COOLDOWN,
+            "Raffreddamento turbo",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Avvisi silenziosi per il raffreddamento del turbo dopo il viaggio"
+            setSound(null, null)
+            enableVibration(false)
+        }
+
+        manager.createNotificationChannels(
+            listOf(persistentChannel, regenChannel, connectionChannel, serviceChannel, cooldownChannel)
+        )
         Log.d(TAG, "Notification channels created")
     }
 
@@ -293,6 +311,84 @@ object NotificationHelper {
         try {
             NotificationManagerCompat.from(context).notify(NOTIF_ID_SERVICE, notification)
             Log.d(TAG, "🔧 Oil change reminder sent at ${kmSinceOilChange} km")
+        } catch (e: SecurityException) {
+            Log.e(TAG, "POST_NOTIFICATIONS permission not granted: ${e.message}")
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Turbo cooldown notifications (silent — no MP3, no vibration)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Shown when the car stops after a trip — tells the driver to wait 45s
+     * before turning off the engine. Silent popup on phone + Android Auto.
+     */
+    fun notifyCooldownStarted(context: Context) {
+        postCooldownNotification(
+            context,
+            title = context.getString(R.string.notif_cooldown_started_title),
+            text  = context.getString(R.string.notif_cooldown_started_text),
+            color = Color.parseColor("#F57F17")   // amber
+        )
+        Log.d(TAG, "Cooldown started notification posted")
+    }
+
+    /**
+     * Shown when the 45-second cooldown completes — engine is safe to stop.
+     * Replaces the "in corso" notification.
+     */
+    fun notifyCooldownComplete(context: Context) {
+        postCooldownNotification(
+            context,
+            title = context.getString(R.string.notif_cooldown_complete_title),
+            text  = context.getString(R.string.notif_cooldown_complete_text),
+            color = Color.parseColor("#2E7D32")   // green
+        )
+        Log.d(TAG, "Cooldown complete notification posted")
+    }
+
+    /** Cancels any visible cooldown notification (e.g. driver moved before 45s). */
+    fun cancelCooldownNotification(context: Context) {
+        NotificationManagerCompat.from(context).cancel(NOTIF_ID_COOLDOWN)
+        Log.d(TAG, "Cooldown notification cancelled")
+    }
+
+    private fun postCooldownNotification(context: Context, title: String, text: String, color: Int) {
+        val tapIntent = PendingIntent.getActivity(
+            context, NOTIF_ID_COOLDOWN,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val carTapIntent = PendingIntent.getService(
+            context, NOTIF_ID_COOLDOWN,
+            Intent(context, DpfCarAppService::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_COOLDOWN)
+            .setSmallIcon(R.drawable.ic_car_header)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setColor(color)
+            .setColorized(true)
+            .setAutoCancel(false)
+            .setOngoing(false)
+            .setSilent(true)
+            .setContentIntent(tapIntent)
+            .extend(
+                CarAppExtender.Builder()
+                    .setImportance(NotificationManagerCompat.IMPORTANCE_DEFAULT)
+                    .setContentTitle(title)
+                    .setContentText(text)
+                    .setContentIntent(carTapIntent)
+                    .apply { getIconBitmap(context)?.let { setLargeIcon(it) } }
+                    .build()
+            )
+            .build()
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIF_ID_COOLDOWN, notification)
         } catch (e: SecurityException) {
             Log.e(TAG, "POST_NOTIFICATIONS permission not granted: ${e.message}")
         }
