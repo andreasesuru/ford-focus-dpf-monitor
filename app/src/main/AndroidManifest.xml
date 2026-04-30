@@ -94,6 +94,16 @@
             android:parentActivityName=".ui.MainActivity" />
 
         <!-- ─────────────────────────────────────────────────────────────────
+             MAINTENANCE REMINDERS — Servizi tab (4th tab)
+        ───────────────────────────────────────────────────────────────────── -->
+        <activity
+            android:name=".ui.MaintenanceActivity"
+            android:exported="false"
+            android:label="Manutenzione"
+            android:parentActivityName=".ui.MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- ─────────────────────────────────────────────────────────────────
              ANDROID AUTO — CarAppService entry point
              Category IOT = monitoring/utility app (not navigation/parking)
         ───────────────────────────────────────────────────────────────────── -->
@@ -133,7 +143,7 @@
         ───────────────────────────────────────────────────────────────────── -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.example.fordfocusdpfscan.provider"
+            android:authorities="${applicationId}.provider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

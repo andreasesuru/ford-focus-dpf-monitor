@@ -600,67 +600,11 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- ── Footer ──────────────────────────────────────────────────────────── -->
-    <LinearLayout
+    <!-- ── Footer (shared) ──────────────────────────────────────────────── -->
+    <include
+        android:id="@+id/layoutFooter"
+        layout="@layout/layout_footer"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:paddingVertical="10dp"
-        android:background="#000000">
-
-        <!-- Thin divider -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#0F0F0F"
-            android:layout_marginBottom="8dp"/>
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Andrea Sesuru"
-                android:textColor="#6A7D90"
-                android:textSize="12sp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text=" · "
-                android:textColor="#6A7D90"
-                android:textSize="12sp"/>
-
-            <TextView
-                android:id="@+id/tvFooterGithub"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="github.com/andreasesuru"
-                android:textColor="#4F8EF7"
-                android:textSize="12sp"
-                android:paddingVertical="4dp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text=" · "
-                android:textColor="#6A7D90"
-                android:textSize="12sp"/>
-
-            <TextView
-                android:id="@+id/tvFooterVersion"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="v3.5"
-                android:textColor="#6A7D90"
-                android:textSize="12sp"/>
-
-        </LinearLayout>
-    </LinearLayout>
+        android:layout_height="wrap_content"/>
 
 </LinearLayout>

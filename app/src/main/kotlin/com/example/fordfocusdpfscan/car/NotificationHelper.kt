@@ -18,7 +18,9 @@ import androidx.core.app.NotificationManagerCompat
 import com.example.fordfocusdpfscan.R
 import com.example.fordfocusdpfscan.data.DpfData
 import com.example.fordfocusdpfscan.data.RegenStatus
+import com.example.fordfocusdpfscan.data.db.MaintenanceReminder
 import com.example.fordfocusdpfscan.ui.MainActivity
+import com.example.fordfocusdpfscan.ui.MaintenanceActivity
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // NotificationHelper.kt — Central factory for all app notifications.
@@ -47,6 +49,7 @@ object NotificationHelper {
     const val NOTIF_ID_CONNECTION  = 1003
     const val NOTIF_ID_SERVICE     = 1004   // tagliando / service reminder
     const val NOTIF_ID_COOLDOWN    = 1005   // turbo cooldown timer
+    // Maintenance notifications use IDs 2000 + reminder.id (one per reminder)
 
     // ── Channel IDs ───────────────────────────────────────────────────────────
     private const val CHANNEL_PERSISTENT  = "focus_persistent"
@@ -56,7 +59,8 @@ object NotificationHelper {
     private const val CHANNEL_REGEN       = "focus_regen_v2"     // custom MP3 sound
     private const val CHANNEL_CONNECTION  = "focus_connection"   // silent
     private const val CHANNEL_SERVICE     = "focus_service"      // silent, service reminders
-    private const val CHANNEL_COOLDOWN    = "focus_cooldown"     // silent, turbo cooldown
+    private const val CHANNEL_COOLDOWN     = "focus_cooldown"      // silent, turbo cooldown
+    private const val CHANNEL_MAINTENANCE  = "focus_maintenance"   // silent, maintenance reminders
 
     // ── Notification timeout ──────────────────────────────────────────────────
     private const val EVENT_TIMEOUT_MS = 5_000L   // heads-up dismisses after 5 s
@@ -174,8 +178,19 @@ object NotificationHelper {
             enableVibration(false)
         }
 
+        // ── Channel 6: Maintenance reminders (silent — informational) ────────
+        val maintenanceChannel = NotificationChannel(
+            CHANNEL_MAINTENANCE,
+            "Promemoria manutenzione",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Scadenze manutenzione: tagliando, gomme, filtri"
+            setSound(null, null)
+            enableVibration(false)
+        }
+
         manager.createNotificationChannels(
-            listOf(persistentChannel, regenChannel, connectionChannel, serviceChannel, cooldownChannel)
+            listOf(persistentChannel, regenChannel, connectionChannel, serviceChannel, cooldownChannel, maintenanceChannel)
         )
         Log.d(TAG, "Notification channels created")
     }
@@ -284,38 +299,6 @@ object NotificationHelper {
         Log.d(TAG, "✅ BLE connected notification posted (silent)")
     }
 
-    /**
-     * Promemoria tagliando — si attiva quando km dall'ultimo cambio olio ≥ 10.000.
-     * Silenziosa (niente suono), rimane fino a dismiss manuale.
-     */
-    fun notifyOilChangeReminder(context: Context, kmSinceOilChange: Long) {
-        val tapIntent = PendingIntent.getActivity(
-            context, 0,
-            Intent(context, MainActivity::class.java),
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val notification = NotificationCompat.Builder(context, CHANNEL_SERVICE)
-            .setSmallIcon(R.drawable.ic_car_header)
-            .setContentTitle("🔧 Tagliando in scadenza")
-            .setContentText("Hai percorso %,d km dall'ultimo cambio olio — prenota dal meccanico.".format(kmSinceOilChange))
-            .setStyle(NotificationCompat.BigTextStyle()
-                .bigText("Hai percorso %,d km dall'ultimo cambio olio.\nSi consiglia di prenotare un tagliando entro breve.".format(kmSinceOilChange)))
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setColor(0xFFFF9F0A.toInt())   // amber
-            .setColorized(true)
-            .setAutoCancel(false)          // resta nella tendina finché non si fa il tagliando
-            .setContentIntent(tapIntent)
-            .setSilent(true)
-            .build()
-        try {
-            NotificationManagerCompat.from(context).notify(NOTIF_ID_SERVICE, notification)
-            Log.d(TAG, "🔧 Oil change reminder sent at ${kmSinceOilChange} km")
-        } catch (e: SecurityException) {
-            Log.e(TAG, "POST_NOTIFICATIONS permission not granted: ${e.message}")
-        }
-    }
-
     // ═════════════════════════════════════════════════════════════════════════
     // Turbo cooldown notifications (silent — no MP3, no vibration)
     // ═════════════════════════════════════════════════════════════════════════
@@ -352,6 +335,89 @@ object NotificationHelper {
     fun cancelCooldownNotification(context: Context) {
         NotificationManagerCompat.from(context).cancel(NOTIF_ID_COOLDOWN)
         Log.d(TAG, "Cooldown notification cancelled")
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // Maintenance reminder notifications (silent — no sound, no vibration)
+    // Each reminder has its own notification ID = 2000 + reminder.id
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /** In scadenza tra < 1000 km — soft warning. */
+    fun notifyMaintenanceWarning(context: Context, reminder: MaintenanceReminder, kmLeft: Long) {
+        postMaintenanceNotification(
+            context   = context,
+            reminder  = reminder,
+            title     = "${reminder.title} — in scadenza",
+            text      = "Scade tra %,d km. Ricordati di prenotare.".format(kmLeft),
+            color     = Color.parseColor("#FF9500"),   // amber
+            priority  = NotificationCompat.PRIORITY_DEFAULT
+        )
+        Log.d(TAG, "Maintenance WARNING: ${reminder.title} — $kmLeft km left")
+    }
+
+    /** Urgente: < 500 km — higher priority. */
+    fun notifyMaintenanceUrgent(context: Context, reminder: MaintenanceReminder, kmLeft: Long) {
+        postMaintenanceNotification(
+            context   = context,
+            reminder  = reminder,
+            title     = "${reminder.title} — urgente!",
+            text      = "Solo %,d km alla scadenza. Prenota subito.".format(kmLeft),
+            color     = Color.parseColor("#FF6B00"),   // deep orange
+            priority  = NotificationCompat.PRIORITY_HIGH
+        )
+        Log.d(TAG, "Maintenance URGENT: ${reminder.title} — $kmLeft km left")
+    }
+
+    /** Scaduto — persistent until the user marks the maintenance done. */
+    fun notifyMaintenanceOverdue(context: Context, reminder: MaintenanceReminder) {
+        postMaintenanceNotification(
+            context   = context,
+            reminder  = reminder,
+            title     = "${reminder.title} — SCADUTO",
+            text      = "Scadenza superata. Effettua la manutenzione il prima possibile.",
+            color     = Color.parseColor("#FF3B30"),   // red
+            priority  = NotificationCompat.PRIORITY_HIGH,
+            autoCancel = false   // stays until dismissed
+        )
+        Log.d(TAG, "Maintenance OVERDUE: ${reminder.title}")
+    }
+
+    private fun postMaintenanceNotification(
+        context: Context,
+        reminder: MaintenanceReminder,
+        title: String,
+        text: String,
+        color: Int,
+        priority: Int = NotificationCompat.PRIORITY_DEFAULT,
+        autoCancel: Boolean = true
+    ) {
+        val notifId = (2000 + reminder.id).toInt()
+
+        val tapIntent = PendingIntent.getActivity(
+            context, notifId,
+            Intent(context, MaintenanceActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_MAINTENANCE)
+            .setSmallIcon(R.drawable.ic_car_header)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setPriority(priority)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setColor(color)
+            .setColorized(true)
+            .setAutoCancel(autoCancel)
+            .setSilent(true)
+            .setContentIntent(tapIntent)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(notifId, notification)
+        } catch (e: SecurityException) {
+            Log.e(TAG, "POST_NOTIFICATIONS permission not granted: ${e.message}")
+        }
     }
 
     private fun postCooldownNotification(context: Context, title: String, text: String, color: Int) {

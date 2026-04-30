@@ -187,10 +187,10 @@ class MainActivity : BaseTabActivity() {
 
     private fun setupFooter() {
         // Version — always in sync with build.gradle versionName
-        binding.tvFooterVersion.text = "v${com.example.fordfocusdpfscan.BuildConfig.VERSION_NAME}"
+        binding.layoutFooter.tvFooterVersion.text = "v${com.example.fordfocusdpfscan.BuildConfig.VERSION_NAME}"
 
         // GitHub link — opens in browser on tap
-        binding.tvFooterGithub.setOnClickListener {
+        binding.layoutFooter.tvFooterGithub.setOnClickListener {
             val intent = android.content.Intent(
                 android.content.Intent.ACTION_VIEW,
                 android.net.Uri.parse("https://github.com/andreasesuru")

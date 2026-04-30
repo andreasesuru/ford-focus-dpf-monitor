@@ -12,6 +12,7 @@ import com.example.fordfocusdpfscan.car.NotificationHelper
 import com.example.fordfocusdpfscan.data.ConnectionState
 import com.example.fordfocusdpfscan.data.DpfData
 import com.example.fordfocusdpfscan.data.DpfRepository
+import com.example.fordfocusdpfscan.data.MaintenanceRepository
 import com.example.fordfocusdpfscan.data.RegenHistoryRepository
 import com.example.fordfocusdpfscan.data.RegenStatus
 import kotlinx.coroutines.flow.collectLatest
@@ -55,22 +56,34 @@ class DpfForegroundService : LifecycleService() {
         RegenHistoryRepository(applicationContext)
     }
 
+    /** Maintenance reminders repository. */
+    private val maintenanceRepo: MaintenanceRepository by lazy {
+        MaintenanceRepository(applicationContext)
+    }
+
     /** Throttle DATA_POINT events: only record one sample every 30 seconds. */
     private var lastDataPointTime = 0L
     private val DATA_POINT_INTERVAL_MS = 30_000L
 
-    /** Throttle persistent notification updates — max once per second.
-     *  Without this, every OBD PID response (10+ per poll cycle) triggers a
-     *  separate NotificationManagerCompat.notify() call, causing severe lag
-     *  in the notification drawer. */
+    // ── Persistent notification throttle ──────────────────────────────────────
+    /** Update the persistent notification at most every 5 seconds. The shown
+     *  data (soot %, EGT) changes slowly — no need for 1-second refreshes, which
+     *  cause the notification drawer to re-render continuously and lag. */
     private var lastNotifUpdateTime = 0L
-    private val NOTIF_UPDATE_INTERVAL_MS = 1_000L
+    private val NOTIF_UPDATE_INTERVAL_MS = 5_000L
 
-    // ── Oil change reminder — fire once per threshold crossing ────────────────
-    /** km threshold that triggers the reminder notification. */
-    private val OIL_CHANGE_WARN_KM = 10_000L
-    /** True once the notification has been sent; reset when oil is changed (km drops). */
-    private var oilChangeNotifSent = false
+    /** Last summary string posted — skip notify() if the content hasn't changed. */
+    private var lastNotifSummary = ""
+
+    // ── Maintenance checks ────────────────────────────────────────────────────
+    /** Last odometer km at which we ran a maintenance notification check.
+     *  Only re-check when the odometer advances by at least 1 km. */
+    private var lastMaintenanceCheckKm = -1L
+
+    /** Last values used to sync the auto-managed tagliando.
+     *  DB write happens only when odo or oilKm actually changes. */
+    private var lastSyncOdo   = -1L
+    private var lastSyncOilKm = -1L
 
     // ═════════════════════════════════════════════════════════════════════════
     // Service lifecycle
@@ -158,35 +171,95 @@ class DpfForegroundService : LifecycleService() {
     // Observers
     // ═════════════════════════════════════════════════════════════════════════
 
-    /** Refreshes the persistent notification content every time DpfData changes. */
+    /** Refreshes the persistent notification and triggers maintenance checks on data changes. */
     private fun observeDpfData() {
         lifecycleScope.launch {
             DpfRepository.dpfData.collectLatest { data ->
-                // Throttle notification updates — each OBD PID response triggers a
-                // separate StateFlow emission, so without throttling we'd call
-                // notify() 10+ times per second, causing visible lag in the drawer.
+                // ── Fix: throttle + content check to stop notification drawer lag ──
+                // Each OBD poll cycle emits 14+ StateFlow updates. Without throttling
+                // we'd call notify() ~10×/second, causing continuous re-renders in the
+                // notification shade. We now update at most every 5s AND only when the
+                // displayed content actually changed.
                 val now = System.currentTimeMillis()
                 if (now - lastNotifUpdateTime >= NOTIF_UPDATE_INTERVAL_MS) {
-                    lastNotifUpdateTime = now
-                    val updatedNotif = NotificationHelper.buildPersistentNotification(
-                        context = this@DpfForegroundService,
-                        dpfData = data
-                    )
-                    NotificationHelper.updatePersistentNotification(
-                        this@DpfForegroundService,
-                        updatedNotif
-                    )
+                    val newSummary = buildPersistentSummaryKey(data)
+                    if (newSummary != lastNotifSummary) {
+                        lastNotifSummary    = newSummary
+                        lastNotifUpdateTime = now
+                        val updatedNotif = NotificationHelper.buildPersistentNotification(
+                            context = this@DpfForegroundService,
+                            dpfData = data
+                        )
+                        NotificationHelper.updatePersistentNotification(
+                            this@DpfForegroundService,
+                            updatedNotif
+                        )
+                    }
                 }
 
-                // ── Oil change reminder ───────────────────────────────────────
-                // Fire once when km ≥ 10.000; reset flag if km drops (oil changed).
-                val km = data.kmSinceOilChange
-                if (km >= OIL_CHANGE_WARN_KM && !oilChangeNotifSent) {
-                    oilChangeNotifSent = true
-                    NotificationHelper.notifyOilChangeReminder(this@DpfForegroundService, km)
-                } else if (km in 0L until (OIL_CHANGE_WARN_KM - 1000L)) {
-                    // km dropped well below threshold → oil was changed, allow re-notify
-                    oilChangeNotifSent = false
+                // ── Maintenance: sync auto-managed tagliando from ECU ─────────
+                // Only hits the DB when odo or oilKm actually changes (not every poll).
+                val odo   = data.odometerKm
+                val oilKm = data.kmSinceOilChange
+                if (odo > 0L && oilKm >= 0L &&
+                    (odo != lastSyncOdo || oilKm != lastSyncOilKm)) {
+                    lastSyncOdo   = odo
+                    lastSyncOilKm = oilKm
+                    launch { maintenanceRepo.syncAutoManagedTagliando(odo, oilKm) }
+                }
+
+                // ── Maintenance: check reminders when odometer advances ────────
+                if (odo > 0L && odo != lastMaintenanceCheckKm) {
+                    lastMaintenanceCheckKm = odo
+                    checkMaintenanceNotifications(odo)
+                }
+            }
+        }
+    }
+
+    /**
+     * Builds a compact string key from the values shown in the persistent notification.
+     * notify() is only called when this key changes — avoids useless re-renders.
+     */
+    private fun buildPersistentSummaryKey(data: DpfData): String {
+        val connected = if (data.bleConnected) "1" else "0"
+        val soot = data.sootPercentage.toInt().toString()
+        val egt  = data.egtCelsius.toInt().toString()
+        return "$connected|$soot|$egt"
+    }
+
+    /**
+     * Checks all maintenance reminders against the current odometer and fires
+     * notifications when thresholds are crossed. Each notification fires only once
+     * per maintenance interval (flags stored in DB).
+     */
+    private fun checkMaintenanceNotifications(odometerKm: Long) {
+        lifecycleScope.launch {
+            val reminders = maintenanceRepo.getAll()
+            reminders.forEach { reminder ->
+                val kmLeft = reminder.kmRemaining(odometerKm)
+                when {
+                    // Overdue
+                    kmLeft < 0 && !reminder.notifOverdueSent -> {
+                        NotificationHelper.notifyMaintenanceOverdue(
+                            this@DpfForegroundService, reminder
+                        )
+                        maintenanceRepo.setNotifOverdueSent(reminder.id)
+                    }
+                    // Urgent (< 500 km)
+                    kmLeft in 0..499 && !reminder.notif500Sent -> {
+                        NotificationHelper.notifyMaintenanceUrgent(
+                            this@DpfForegroundService, reminder, kmLeft
+                        )
+                        maintenanceRepo.setNotif500Sent(reminder.id)
+                    }
+                    // Warning (< 1000 km)
+                    kmLeft in 500..999 && !reminder.notif1000Sent -> {
+                        NotificationHelper.notifyMaintenanceWarning(
+                            this@DpfForegroundService, reminder, kmLeft
+                        )
+                        maintenanceRepo.setNotif1000Sent(reminder.id)
+                    }
                 }
             }
         }

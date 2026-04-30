@@ -29,7 +29,7 @@ import kotlin.math.abs
 
 abstract class BaseTabActivity : AppCompatActivity() {
 
-    /** Position of this tab: 0 = Monitor, 1 = Diagnostica, 2 = Storico. */
+    /** Position of this tab: 0 = Monitor, 1 = Diagnostica, 2 = Storico, 3 = Manutenzione. */
     abstract val tabIndex: Int
 
     private lateinit var gestureDetector: GestureDetectorCompat
@@ -66,7 +66,7 @@ abstract class BaseTabActivity : AppCompatActivity() {
     // ═════════════════════════════════════════════════════════════════════════
 
     private fun highlightActiveTab() {
-        val tabIds = listOf(R.id.tabMonitor, R.id.tabDiagnostica, R.id.tabStorico)
+        val tabIds = listOf(R.id.tabMonitor, R.id.tabDiagnostica, R.id.tabStorico, R.id.tabManutenzione)
         tabIds.forEachIndexed { index, id ->
             val tv = findViewById<TextView>(id) ?: return@forEachIndexed
             if (index == tabIndex) {
@@ -85,9 +85,10 @@ abstract class BaseTabActivity : AppCompatActivity() {
 
     private fun setupTabClickListeners() {
         val tabMap = mapOf(
-            R.id.tabMonitor     to 0,
-            R.id.tabDiagnostica to 1,
-            R.id.tabStorico     to 2
+            R.id.tabMonitor      to 0,
+            R.id.tabDiagnostica  to 1,
+            R.id.tabStorico      to 2,
+            R.id.tabManutenzione to 3
         )
         for ((id, index) in tabMap) {
             if (index == tabIndex) continue   // already here — tapping does nothing
@@ -182,7 +183,8 @@ abstract class BaseTabActivity : AppCompatActivity() {
             0 -> MainActivity::class.java
             1 -> DiagnosticaActivity::class.java
             2 -> HistoryActivity::class.java
-            else -> return false   // already at first or last tab — ignore
+            3 -> MaintenanceActivity::class.java
+            else -> return false   // out of range — ignore
         }
         // Tell the entering activity which side to slide in from.
         // goingForward (next tab) → body enters from the right (+1 * screenW).

@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Custom dialog layout for adding/editing a maintenance reminder.
+     Background is set programmatically to bg_dialog_rounded.xml (rounded + Ford Blue border). -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <!-- Dialog title -->
+    <TextView
+        android:id="@+id/tvDialogTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Nuovo promemoria"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="20dp"/>
+
+    <!-- Field: Titolo manutenzione -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Titolo manutenzione"
+        android:textColor="#7A8FA6"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08"
+        android:layout_marginBottom="6dp"/>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="es. Inversione gomme"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#3A4A5C"
+            android:inputType="textCapSentences"
+            android:maxLines="1"/>
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Field: Intervallo km -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ricordami ogni (km)"
+        android:textColor="#7A8FA6"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08"
+        android:layout_marginBottom="6dp"/>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/etIntervalKm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="es. 10000"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#3A4A5C"
+            android:inputType="number"
+            android:maxLines="1"/>
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Field: Ultima manutenzione + Oggi button -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Ultima manutenzione (km odometro)"
+        android:textColor="#7A8FA6"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.08"
+        android:layout_marginBottom="6dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="24dp">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="10dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etLastDoneKm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="es. 95230"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#3A4A5C"
+                android:inputType="number"
+                android:maxLines="1"/>
+
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <Button
+            android:id="@+id/btnOggi"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Oggi"
+            android:textSize="13sp"
+            android:backgroundTint="#003478"
+            style="@style/Widget.MaterialComponents.Button"/>
+
+    </LinearLayout>
+
+    <!-- Note: shown when odometer not yet available -->
+    <TextView
+        android:id="@+id/tvOdometerNote"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Connetti il dongle OBD2 per usare il valore odometro attuale."
+        android:textColor="#7A8FA6"
+        android:textSize="11sp"
+        android:layout_marginTop="-16dp"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone"/>
+
+    <!-- Divider -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1A2A3A"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Action buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/btnCancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Annulla"
+            android:textColor="#7A8FA6"
+            android:backgroundTint="@android:color/transparent"
+            android:layout_marginEnd="8dp"
+            style="@style/Widget.MaterialComponents.Button.TextButton"/>
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Salva"
+            android:backgroundTint="#003478"
+            style="@style/Widget.MaterialComponents.Button"/>
+
+    </LinearLayout>
+
+</LinearLayout>
