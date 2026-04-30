@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/versione-2.7-blue"/>
+  <img src="https://img.shields.io/badge/versione-4.7-blue"/>
   <img src="https://img.shields.io/badge/Android-8.0%2B-green"/>
   <img src="https://img.shields.io/badge/Kotlin-2.x-purple"/>
   <img src="https://img.shields.io/badge/Android%20Auto-✓-orange"/>
@@ -24,6 +24,12 @@
   <img src="screenshots/monitor.jpg" width="220" alt="Monitor"/>
   <img src="screenshots/diagnostica.jpg" width="220" alt="Diagnostica"/>
   <img src="screenshots/storico.jpg" width="220" alt="Storico"/>
+</p>
+
+## 🚗 Android Auto — Ford Focus Sync 3
+
+<p align="center">
+  <img src="screenshots/sync3.jpg" width="480" alt="DPF Monitor su Ford Focus Sync 3"/>
 </p>
 
 ---
@@ -51,14 +57,21 @@
 - Dati mock di esempio finché non esistono regen reali registrate
 - Export report HTML per il meccanico tramite share sheet
 
+### 🔧 Manutenzione
+- Promemoria manutenzione con card colorate: verde / arancio / rosso in base ai km rimanenti
+- **Tagliando olio gestito automaticamente** dalla centralina (PID 22 0542) — si aggiorna da solo
+- Aggiunta promemoria personalizzati (titolo, intervallo km, ultimo intervento)
+- Notifiche push a 1000 km, 500 km e a scadenza raggiunta (una sola volta per intervallo)
+- Pulsante "Fatto" con conferma + registrazione km per azzerare il countdown
+
 ### 🔔 Notifiche
 - Notifica persistente con stato DPF durante il monitoraggio
 - Allerta vibrazione + suono su regen WARNING e ACTIVE
-- Promemoria tagliando a 10.000 km (persistente fino al cambio olio)
+- Promemoria manutenzione a 1000 km / 500 km / scaduto
 - Notifica silenziosa su connessione/disconnessione dongle
 
-### 🚗 Android Auto
-- Dashboard con 4 righe: Filtro DPF, Rigenerazione, Temperature, Distanze
+### 🚗 Android Auto / Sync 3
+- Dashboard con 3 righe: Filtro DPF, Rigenerazione, Info Motore
 - Valori colorati (verde/giallo/rosso) in base alle soglie
 - CarToast su ogni transizione di stato
 - Tasto "Ricollega" per riconnettere il dongle senza toccare il telefono
