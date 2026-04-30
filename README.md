@@ -24,6 +24,7 @@
   <img src="screenshots/monitor.jpg" width="220" alt="Monitor"/>
   <img src="screenshots/diagnostica.jpg" width="220" alt="Diagnostica"/>
   <img src="screenshots/storico.jpg" width="220" alt="Storico"/>
+  <img src="screenshots/manutenzione.jpg" width="220" alt="Servizi"/>
 </p>
 
 ## 🚗 Android Auto — Ford Focus Sync 3
@@ -41,12 +42,12 @@
 - **Delta P** (pressione differenziale) con range idle/marcia
 - **Stato rigenerazione** automatico: Inattiva / Warning / Attiva / Completata
 - Rilevamento regen con doppia strategia: flag ECU diretto o fallback temperatura EGT
-- Temperature: EGT ingresso/uscita, refrigerante, ΔT pre-post DPF
+- Temperature: EGT, refrigerante
+- Distanze ECU: odometro, km da ultima regen, km da ultimo tagliando
 
 ### 📡 Diagnostica
-- Sensori motore live: RPM, velocità, carico, boost (MAP)
-- Sezione DPF avanzato: Soot, Load, Delta P, EGT ingresso/uscita, ΔT
-- Distanze ECU: km da ultima regen, km da ultimo tagliando, odometro
+- Sensori motore live: RPM, velocità, carico motore, boost (MAP)
+- Sezione DPF avanzata: Soot %, Load %, Delta P, EGT, ΔT pre-post DPF
 - Barra colorata di stato per ogni cella (verde / ambra / rossa)
 - Hint contestuali con range normali per ogni parametro
 
@@ -54,27 +55,29 @@
 - Registrazione automatica di ogni sessione di rigenerazione
 - Grafico a barre Soot prima/dopo per le ultime 8 sessioni
 - Card sessione con: data, km, tipo regen (🔴 Forzata ECU / 🌡 Passiva), EGT picco, risultato
-- Dati mock di esempio finché non esistono regen reali registrate
 - Export report HTML per il meccanico tramite share sheet
 
-### 🔧 Manutenzione
-- Promemoria manutenzione con card colorate: verde / arancio / rosso in base ai km rimanenti
-- **Tagliando olio gestito automaticamente** dalla centralina (PID 22 0542) — si aggiorna da solo
+### 🔧 Servizi
+- Promemoria manutenzione con card colorate: **verde / arancio / rosso** in base ai km rimanenti
+- Barra di avanzamento km usati / intervallo per ogni promemoria
+- **Tagliando olio gestito automaticamente** dalla centralina (PID 22 0542): si aggiorna da solo ad ogni connessione, senza input manuale
 - Aggiunta promemoria personalizzati (titolo, intervallo km, ultimo intervento)
+- Pulsante **Fatto** con dialogo di conferma + registrazione km per azzerare il countdown
+- Pulsanti **Modifica** ed **Elimina** per ogni promemoria
 - Notifiche push a 1000 km, 500 km e a scadenza raggiunta (una sola volta per intervallo)
-- Pulsante "Fatto" con conferma + registrazione km per azzerare il countdown
 
 ### 🔔 Notifiche
-- Notifica persistente con stato DPF durante il monitoraggio
-- Allerta vibrazione + suono su regen WARNING e ACTIVE
+- Notifica persistente con stato DPF durante il monitoraggio (aggiornata ogni 5s)
+- Allerta vibrazione + suono personalizzato su regen WARNING e ACTIVE
 - Promemoria manutenzione a 1000 km / 500 km / scaduto
 - Notifica silenziosa su connessione/disconnessione dongle
+- Notifica timer cooldown turbo post-regen
 
 ### 🚗 Android Auto / Sync 3
-- Dashboard con 3 righe: Filtro DPF, Rigenerazione, Info Motore
+- Dashboard con 3 righe: **Filtro DPF**, **Rigenerazione**, **Info Motore**
 - Valori colorati (verde/giallo/rosso) in base alle soglie
-- CarToast su ogni transizione di stato
-- Tasto "Ricollega" per riconnettere il dongle senza toccare il telefono
+- CarToast su ogni transizione di stato regen
+- Tasto **Ricollega** per riconnettere il dongle senza toccare il telefono
 
 ---
 
@@ -85,9 +88,9 @@
 | Linguaggio | Kotlin |
 | Connettività | Bluetooth LE (BLE) + SPP |
 | Protocollo | OBD2 — ELM327 (PIDs Mode 01 + Ford 22xx) |
-| Database | Room (SQLite) |
+| Database | Room (SQLite) — v3 |
 | Architettura | StateFlow + LifecycleService |
-| UI | View system — RecyclerView, MPAndroidChart |
+| UI | View Binding — RecyclerView, MPAndroidChart |
 | Auto | Android Car App Library 1.4 (categoria IOT) |
 | Notifiche | NotificationCompat — 4 canali |
 
@@ -103,14 +106,15 @@ BleManager — polling ogni ~1.5s
 DpfRepository (StateFlow<DpfData>)
         ↓              ↓              ↓
 MainActivity    DpfScreen (Auto)  DpfForegroundService
-  (gauge UI)    (PaneTemplate)    (notifiche + storico)
+  (gauge UI)    (ListTemplate)    (notifiche + storico + manutenzione)
 ```
 
 1. Il dongle OBD2 si collega alla presa diagnostica della Focus
 2. L'app interroga la ECU ogni ~1.5 secondi via BLE
 3. I dati aggiornano la UI in tempo reale tramite StateFlow
 4. Se viene rilevata una rigenerazione, viene registrata nel database Room
-5. Su Android Auto, la stessa dashboard è visibile sul display dell'auto
+5. Il promemoria tagliando si aggiorna automaticamente dai km ECU
+6. Su Android Auto, la dashboard è visibile sul display Sync 3 dell'auto
 
 ---
 
