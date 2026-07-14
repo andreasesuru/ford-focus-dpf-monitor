@@ -79,6 +79,7 @@
 
     <!-- Field: Ultima manutenzione + Oggi button -->
     <TextView
+        android:id="@+id/tvLastDoneLabel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Ultima manutenzione (km odometro)"
@@ -89,6 +90,7 @@
         android:layout_marginBottom="6dp"/>
 
     <LinearLayout
+        android:id="@+id/rowLastDone"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"

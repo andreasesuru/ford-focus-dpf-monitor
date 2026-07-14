@@ -2,6 +2,7 @@ package com.example.fordfocusdpfscan.data
 
 import android.content.Context
 import android.util.Log
+import com.example.fordfocusdpfscan.BuildConfig
 import com.example.fordfocusdpfscan.data.db.RegenDataPoint
 import com.example.fordfocusdpfscan.data.db.RegenDatabase
 import com.example.fordfocusdpfscan.data.db.RegenSession
@@ -51,7 +52,9 @@ class RegenHistoryRepository(context: Context) {
             preDeltaPKpa   = data.dpfDeltaPressureKpa,
             preEgtC        = data.egtCelsius,
             preCoolantC    = data.coolantTempC,
-            regenType      = if (data.regenStrategy == RegenStrategy.DIRECT_FLAG) "ACTIVE" else "ACTIVE",
+            // Sessions only start on ACTIVE (EGT ≥ 550 °C sustained), so every
+            // recorded regen is EGT-confirmed — there is no ECU-flag detection.
+            regenType      = "ACTIVE",
             result         = "IN_PROGRESS"
         )
 
@@ -152,8 +155,8 @@ class RegenHistoryRepository(context: Context) {
             val dur     = s.durationMinutes?.let { "$it min" } ?: "—"
             val odoPre  = if (s.preOdometerKm >= 0) "%,d km".format(s.preOdometerKm) else "—"
             val coolant = if (s.preCoolantC >= 0) "${"%.0f".format(s.preCoolantC)} °C" else "—"
-            val deltaPre= if (s.preDeltaPKpa >= 0) "${"%.2f".format(s.preDeltaPKpa)} kPa" else "—"
-            val deltaPost= s.postSootPct?.let { _ -> "${"%.2f".format(s.peakDeltaPKpa)} kPa" } ?: "—"
+            val deltaPre = if (s.preDeltaPKpa >= 0) "${"%.2f".format(s.preDeltaPKpa)} kPa" else "—"
+            val deltaPeak= if (s.peakDeltaPKpa > 0) "${"%.2f".format(s.peakDeltaPKpa)} kPa" else "—"
             val resultBadge = when (s.result) {
                 "COMPLETED"   -> "<span class=\"ok\">✓ Completata</span>"
                 "INTERRUPTED" -> "<span class=\"warn\">⚠ Interrotta</span>"
@@ -169,7 +172,7 @@ class RegenHistoryRepository(context: Context) {
               <td>$dur</td>
               <td>$sootPre → $sootPost</td>
               <td>$peakEgt</td>
-              <td>$deltaPre → $deltaPost</td>
+              <td>$deltaPre → $deltaPeak</td>
               <td>$coolant</td>
               <td>$resultBadge</td>
             </tr>
@@ -220,7 +223,7 @@ class RegenHistoryRepository(context: Context) {
     <p><b>Centralina:</b> EDC17C70 (Bosch)</p>
     <p><b>OBD Dongle:</b> Android-Vlink (BLE/SPP)</p>
     <p><b>Report generato:</b> $genDate</p>
-    <p><b>App:</b> DPF Monitor v2.2</p>
+    <p><b>App:</b> DPF Monitor v${BuildConfig.VERSION_NAME}</p>
   </div>
 </div>
 
@@ -250,7 +253,7 @@ class RegenHistoryRepository(context: Context) {
       <th>Durata</th>
       <th>Soot (prima → dopo)</th>
       <th>EGT picco</th>
-      <th>Delta P (inizio → fine)</th>
+      <th>Delta P (inizio → picco)</th>
       <th>Coolant</th>
       <th>Risultato</th>
     </tr>
@@ -261,7 +264,7 @@ class RegenHistoryRepository(context: Context) {
 </table>
 
 <div class="footer">
-  Report generato automaticamente da DPF Monitor v2.2 · Ford Focus 1.5 TDCi EDC17C70<br>
+  Report generato automaticamente da DPF Monitor v${BuildConfig.VERSION_NAME} · Ford Focus 1.5 TDCi EDC17C70<br>
   I dati provengono dalla centralina motore tramite protocollo OBD2 (ISO 15765-4 CAN, ATSH7E0).
 </div>
 

@@ -28,10 +28,10 @@ import kotlinx.coroutines.flow.collectLatest
 //   │ Soot X%  ·  Load X%  ·  ΔP X kPa                  │
 //   ├─────────────────────────────────────────────────────┤
 //   │ Rigenerazione                                       │
-//   │ Inattiva — puoi spegnere  ·  Flag ECU              │
+//   │ Inattiva — puoi spegnere  ·  Temp EGT              │
 //   ├─────────────────────────────────────────────────────┤
 //   │ Info Motore                                         │
-//   │ EGT X°C  ·  Refrig. X°C  ·  Carico X%  ·  Boost X │
+//   │ EGT in X°C  ·  EGT out X°C  ·  Motore X°C          │
 //   └─────────────────────────────────────────────────────┘
 //
 // ActionStrip: [Ricollega] — riconnette il dongle OBD2
@@ -147,9 +147,10 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
         }
 
         val source = when (data.regenStrategy) {
-            RegenStrategy.DIRECT_FLAG  -> "  ·  Flag ECU"
-            RegenStrategy.EGT_FALLBACK -> "  ·  Temp EGT"
-            RegenStrategy.NONE         -> ""
+            RegenStrategy.EGT_TEMP  -> "  ·  Temp EGT"
+            RegenStrategy.SOOT_DROP -> "  ·  Soot ↓"
+            RegenStrategy.EXOTHERM  -> "  ·  ΔT filtro"
+            RegenStrategy.NONE      -> ""
         }
 
         return Row.Builder()
@@ -159,25 +160,17 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Riga 3 — INFO MOTORE: EGT · Refrigerante · Carico · Boost
+    // Riga 3 — INFO MOTORE: EGT ingresso · EGT uscita · Temp motore
     //
-    // Boost = MAP (intakeMapKpa) − baro (baroKpa).
-    // Se baroKpa non è disponibile, usa 101.325 kPa come pressione atmosferica
-    // standard — così a minimo si legge ~0.00 bar invece di ~1.03 bar assoluto.
+    // EGT ingresso (pre-DPF) ed uscita (post-DPF) permettono di vedere l'esotermia
+    // del filtro (uscita ≫ ingresso = combustione soot in corso). La temperatura
+    // motore (refrigerante) è il terzo valore utile a colpo d'occhio.
     // ═════════════════════════════════════════════════════════════════════════
 
     private fun buildInfoMotoreRow(data: DpfData): Row {
-        val egtStr     = if (data.egtCelsius >= 0)    "${data.egtCelsius.toInt()} °C"    else "– –"
-        val coolantStr = if (data.coolantTempC >= 0)  "${data.coolantTempC.toInt()} °C"  else "– –"
-        val carico     = if (data.engineLoadPct >= 0) "${data.engineLoadPct.toInt()}%"   else "– –"
-
-        val boostStr = when {
-            data.intakeMapKpa >= 0 && data.baroKpa >= 0 ->
-                "${"%.2f".format((data.intakeMapKpa - data.baroKpa) / 100f)} bar"
-            data.intakeMapKpa >= 0 ->
-                "${"%.2f".format((data.intakeMapKpa - 101.325f) / 100f)} bar"
-            else -> "– –"
-        }
+        val egtInStr   = if (data.egtCelsius >= 0)   "${data.egtCelsius.toInt()} °C"   else "– –"
+        val egtOutStr  = if (data.egtPostDpfC >= 0)  "${data.egtPostDpfC.toInt()} °C"  else "– –"
+        val coolantStr = if (data.coolantTempC >= 0) "${data.coolantTempC.toInt()} °C" else "– –"
 
         val egtColor = when {
             data.egtCelsius < 0    -> CarColor.DEFAULT
@@ -189,7 +182,7 @@ class DpfScreen(carContext: CarContext) : Screen(carContext) {
         return Row.Builder()
             .setTitle("Info Motore")
             .addText(coloredSpan(
-                "EGT $egtStr  ·  Refrig. $coolantStr  ·  Carico $carico  ·  Boost $boostStr",
+                "EGT in $egtInStr  ·  EGT out $egtOutStr  ·  Motore $coolantStr",
                 egtColor
             ))
             .build()

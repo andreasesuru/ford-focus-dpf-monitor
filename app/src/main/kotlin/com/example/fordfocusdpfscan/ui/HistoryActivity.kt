@@ -291,21 +291,13 @@ class HistoryActivity : BaseTabActivity() {
                     if (s.preOdometerKm >= 0) "📍 %,d km · ${s.durationMinutes ?: "—"} min".format(s.preOdometerKm)
                     else "📍 — · ${s.durationMinutes ?: "—"} min"
 
-                // Regen type badge
+                // Regen type badge — detection is always EGT/temperature-based
+                // (no ECU regen-flag PID exists for the EDC17C70), so we label the
+                // source honestly rather than claiming a "Forzata · ECU" reading.
                 val tvType = v.findViewById<TextView>(R.id.tvRegenType)
-                when (s.regenType) {
-                    "ACTIVE"  -> {
-                        tvType.text = "🔴  Forzata · ECU"
-                        tvType.setTextColor(0xFFFF6B6B.toInt())
-                        tvType.setBackgroundColor(0x22FF3B30)
-                    }
-                    "WARNING" -> {
-                        tvType.text = "🌡  Passiva · temperatura"
-                        tvType.setTextColor(0xFF4F8EF7.toInt())
-                        tvType.setBackgroundColor(0x224F8EF7)
-                    }
-                    else -> tvType.text = ""
-                }
+                tvType.text = "🌡  Rilevata via temperatura"
+                tvType.setTextColor(0xFF4F8EF7.toInt())
+                tvType.setBackgroundColor(0x224F8EF7)
 
                 // Soot before → after
                 val sootPre  = if (s.preSootPct  >= 0) "${"%.0f".format(s.preSootPct)}%" else "—"

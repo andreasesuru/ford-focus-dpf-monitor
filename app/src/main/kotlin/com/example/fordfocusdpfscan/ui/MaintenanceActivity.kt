@@ -125,6 +125,17 @@ class MaintenanceActivity : BaseTabActivity() {
             etLastDone.setText(editing.lastDoneKm.toString())
         }
 
+        // Auto-managed tagliando: only the interval (alert limit) is editable —
+        // the title is fixed and the "last done" km stays synced from the ECU.
+        val isAuto = editing?.isAutoManaged == true
+        if (isAuto) {
+            tvTitle.text = "Modifica intervallo tagliando"
+            etTitle.isEnabled = false
+            dialogView.findViewById<View>(R.id.tvLastDoneLabel).visibility = View.GONE
+            dialogView.findViewById<View>(R.id.rowLastDone).visibility = View.GONE
+            tvOdomNote.visibility = View.GONE
+        }
+
         // "Oggi" — pre-fills with current ECU odometer (always enabled, editable)
         val currentOdometer = DpfRepository.dpfData.value.odometerKm
         btnOggi.setOnClickListener {
@@ -153,8 +164,29 @@ class MaintenanceActivity : BaseTabActivity() {
         btnCancel.setOnClickListener { dialog.dismiss() }
 
         btnSave.setOnClickListener {
-            val title    = etTitle.text?.toString()?.trim()
             val interval = etInterval.text?.toString()?.toLongOrNull()
+
+            // Auto-managed tagliando: update ONLY the interval; keep title, the
+            // ECU-synced lastDoneKm and the auto flag. Reset notif flags so the
+            // new alert limit is re-evaluated on the next odometer update.
+            if (isAuto && editing != null) {
+                if (interval == null || interval <= 0) {
+                    Toast.makeText(this, "Inserisci un intervallo valido", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+                lifecycleScope.launch {
+                    repo.update(editing.copy(
+                        intervalKm       = interval,
+                        notif1000Sent    = false,
+                        notif500Sent     = false,
+                        notifOverdueSent = false
+                    ))
+                    dialog.dismiss()
+                }
+                return@setOnClickListener
+            }
+
+            val title    = etTitle.text?.toString()?.trim()
             val lastDone = etLastDone.text?.toString()?.toLongOrNull()
 
             when {

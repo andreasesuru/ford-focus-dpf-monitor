@@ -291,12 +291,32 @@ class DpfForegroundService : LifecycleService() {
     // Regen status change handler
     // ═════════════════════════════════════════════════════════════════════════
 
+    // ── Regen event notification debounce ─────────────────────────────────────
+    /** Suppress a repeat of the SAME regen event notification within this window —
+     *  defence-in-depth against status flapping hammering SystemUI/the launcher
+     *  (the state machine's hysteresis already prevents flapping at the source). */
+    private val REGEN_EVENT_DEBOUNCE_MS = 60_000L
+    private var lastNotifiedStatus: RegenStatus? = null
+    private var lastNotifiedTime = 0L
+
     /**
      * Called by DpfRepository on every status transition.
      * Fires the appropriate heads-up notification + MP3 sound for regen events.
      */
     private fun onRegenStatusChanged(old: RegenStatus, new: RegenStatus) {
         Log.d(TAG, "Regen status: $old → $new")
+
+        if (new == RegenStatus.INACTIVE) return   // INACTIVE never notifies
+
+        // Skip a repeat of the same event within the debounce window.
+        val now = System.currentTimeMillis()
+        if (new == lastNotifiedStatus && now - lastNotifiedTime < REGEN_EVENT_DEBOUNCE_MS) {
+            Log.d(TAG, "Regen event debounced ($new)")
+            return
+        }
+        lastNotifiedStatus = new
+        lastNotifiedTime = now
+
         when (new) {
             RegenStatus.WARNING   -> NotificationHelper.notifyWarning(this)
             RegenStatus.ACTIVE    -> NotificationHelper.notifyActive(this)
@@ -307,7 +327,7 @@ class DpfForegroundService : LifecycleService() {
                     DpfRepository.acknowledgeCompleted()
                 }
             }
-            RegenStatus.INACTIVE  -> { /* no notification needed */ }
+            RegenStatus.INACTIVE  -> { /* handled above */ }
         }
     }
 

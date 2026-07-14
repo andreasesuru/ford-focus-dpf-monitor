@@ -141,8 +141,14 @@ class BleManager(private val context: Context) {
         private const val ELM_CMD_TIMEOUT_MS      = 1500L
 
         // ── SPP reliability ───────────────────────────────────────────────────
-        private const val MAX_SPP_RETRIES         = 3      // attempts before giving up
-        private const val AUTO_RECONNECT_DELAY_MS = 4000L  // wait after drop before retry
+        private const val MAX_SPP_RETRIES = 3      // attempts per connect before backing off
+
+        // ── Persistent auto-reconnect (survives dongle power-off at ignition) ──
+        private const val RECONNECT_BASE_DELAY_MS = 2_000L    // grows with each attempt
+        private const val RECONNECT_MAX_DELAY_MS  = 20_000L   // capped back-off
+        // Keep retrying for this long after a drop, then give up to save battery.
+        // A fresh attempt is armed again when the app is next foregrounded.
+        private const val RECONNECT_GIVE_UP_MS    = 10 * 60_000L
     }
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -167,6 +173,10 @@ class BleManager(private val context: Context) {
     @Volatile private var lastConnectedDevice: BluetoothDevice? = null
     // Set to false when the USER explicitly disconnects (prevents auto-reconnect)
     @Volatile private var autoReconnectEnabled = false
+    // Address to reconnect to; set on every connect, cleared on user disconnect.
+    @Volatile private var reconnectAddress: String? = null
+    // Persistent reconnect supervisor job (see startReconnectLoop()).
+    private var reconnectJob: Job? = null
 
     // ── BLE (GATT) state ──────────────────────────────────────────────────────
     private var bluetoothGatt: BluetoothGatt? = null
@@ -202,6 +212,7 @@ class BleManager(private val context: Context) {
         usingSpp = true
         lastConnectedDevice   = device
         autoReconnectEnabled  = true
+        reconnectAddress      = device.address
         connectedDeviceName = device.name ?: device.address
         Log.d(TAG, "Connecting via SPP to ${device.name} (${device.address})…")
 
@@ -235,6 +246,7 @@ class BleManager(private val context: Context) {
             Log.e(TAG, "SPP connect failed after $MAX_SPP_RETRIES attempts: $lastError")
             _connectionState.value = ConnectionState.DISCONNECTED
             DpfRepository.updateBleConnected(false)
+            startReconnectLoop()   // keep retrying (dongle may not be powered yet)
         }
     }
 
@@ -307,6 +319,9 @@ class BleManager(private val context: Context) {
     fun connectByAddress(address: String) {
         if (_connectionState.value != ConnectionState.DISCONNECTED) return
 
+        reconnectAddress     = address
+        autoReconnectEnabled = true
+
         val adapter = btAdapter() ?: return
         val bonded = adapter.bondedDevices?.find { it.address == address }
         if (bonded != null) {
@@ -331,6 +346,7 @@ class BleManager(private val context: Context) {
             }
             override fun onScanFailed(errorCode: Int) {
                 _connectionState.value = ConnectionState.DISCONNECTED
+                startReconnectLoop()
             }
         }
 
@@ -338,8 +354,10 @@ class BleManager(private val context: Context) {
         scope.launch {
             delay(30_000)
             scanner.stopScan(cb)
-            if (_connectionState.value == ConnectionState.SCANNING)
+            if (_connectionState.value == ConnectionState.SCANNING) {
                 _connectionState.value = ConnectionState.DISCONNECTED
+                startReconnectLoop()
+            }
         }
     }
 
@@ -364,6 +382,50 @@ class BleManager(private val context: Context) {
             } else {
                 Log.d(TAG, "Reconnect → BLE scan")
                 connect()
+            }
+        }
+    }
+
+    /**
+     * Persistent auto-reconnect supervisor. Started on any unexpected drop or
+     * failed connect (while [autoReconnectEnabled]). Retries [reconnectAddress]
+     * with growing back-off until the link is CONNECTED, the user disconnects,
+     * or [RECONNECT_GIVE_UP_MS] elapses (battery guard — re-armed on next
+     * foreground via MainActivity.onStart). Idempotent: a second call while a
+     * loop is already running is ignored.
+     *
+     * Fixes the "get out / back in the car" case: the dongle powers down with the
+     * ignition, and the old one-shot reconnect gave up before it was ready again
+     * (previously forcing a manual Bluetooth off/on to reconnect).
+     */
+    private fun startReconnectLoop() {
+        if (!autoReconnectEnabled) return
+        val addr = reconnectAddress ?: return
+        if (reconnectJob?.isActive == true) return
+        reconnectJob = scope.launch {
+            val startedAt = System.currentTimeMillis()
+            var attempt = 0
+            Log.d(TAG, "Reconnect loop started → $addr")
+            while (isActive && autoReconnectEnabled) {
+                when (_connectionState.value) {
+                    ConnectionState.CONNECTED -> {
+                        Log.d(TAG, "Reconnect loop: link restored ✓")
+                        return@launch
+                    }
+                    ConnectionState.DISCONNECTED -> {
+                        if (System.currentTimeMillis() - startedAt > RECONNECT_GIVE_UP_MS) {
+                            Log.d(TAG, "Reconnect loop: giving up (battery guard)")
+                            return@launch
+                        }
+                        attempt++
+                        Log.d(TAG, "Reconnect attempt $attempt → $addr")
+                        connectByAddress(addr)
+                    }
+                    else -> { /* SCANNING / CONNECTING — let the attempt resolve */ }
+                }
+                val backoff = (RECONNECT_BASE_DELAY_MS * attempt)
+                    .coerceIn(RECONNECT_BASE_DELAY_MS, RECONNECT_MAX_DELAY_MS)
+                delay(backoff)
             }
         }
     }
@@ -399,6 +461,9 @@ class BleManager(private val context: Context) {
         // Disable auto-reconnect BEFORE cancelling the read job, so that the
         // job's exit handler sees false and does not trigger a reconnect.
         autoReconnectEnabled = false
+        reconnectJob?.cancel()
+        reconnectJob = null
+        reconnectAddress = null
         pollingJob?.cancel()
         sppReadJob?.cancel()
         try { sppSocket?.close() } catch (_: IOException) {}
@@ -445,20 +510,9 @@ class BleManager(private val context: Context) {
             _connectionState.value = ConnectionState.DISCONNECTED
             DpfRepository.updateBleConnected(false)
 
-            // Auto-reconnect if the drop was NOT caused by an explicit disconnect()
-            // call (which sets autoReconnectEnabled = false before cancelling this job).
-            val savedDevice = lastConnectedDevice
-            if (autoReconnectEnabled && savedDevice != null && isActive) {
-                Log.d(TAG, "Scheduling auto-reconnect to ${savedDevice.name} in ${AUTO_RECONNECT_DELAY_MS}ms…")
-                delay(AUTO_RECONNECT_DELAY_MS)
-                // Re-check flag — user may have called disconnect() during the delay
-                if (autoReconnectEnabled) {
-                    Log.d(TAG, "Auto-reconnecting now…")
-                    connectSpp(savedDevice)
-                } else {
-                    Log.d(TAG, "Auto-reconnect cancelled by user disconnect")
-                }
-            }
+            // Persistent auto-reconnect unless the user explicitly disconnected
+            // (disconnect() sets autoReconnectEnabled = false before cancelling this job).
+            if (autoReconnectEnabled) startReconnectLoop()
         }
     }
 
@@ -469,6 +523,9 @@ class BleManager(private val context: Context) {
     private fun connectGatt(device: BluetoothDevice) {
         _connectionState.value = ConnectionState.CONNECTING
         connectedDeviceName = device.name ?: device.address
+        lastConnectedDevice   = device
+        reconnectAddress      = device.address
+        autoReconnectEnabled  = true
         Log.d(TAG, "Connecting GATT to ${device.address}…")
         bluetoothGatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
     }
@@ -489,6 +546,7 @@ class BleManager(private val context: Context) {
                     pollingJob?.cancel()
                     bluetoothGatt?.close()
                     bluetoothGatt = null
+                    if (autoReconnectEnabled) startReconnectLoop()   // recover when dongle returns
                 }
             }
         }

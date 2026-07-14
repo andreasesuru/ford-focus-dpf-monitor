@@ -25,26 +25,32 @@ import kotlinx.coroutines.flow.asStateFlow
 
 object DpfRepository {
 
-    // ── SharedPreferences (kept for future use — currently unused) ───────────
+    // ── SharedPreferences ─────────────────────────────────────────────────────
     private const val PREFS_NAME = "focus_prefs"
+    /** Persisted last valid odometer km (survives disconnect / app restart). */
+    private const val KEY_LAST_ODO = "last_odometer_km"
 
-    // ── EGT thresholds (°C) ───────────────────────────────────────────────────
-    /** Below this → INACTIVE (safe to stop). */
-    const val EGT_SAFE_THRESHOLD: Float       = 400f
-    /** Above this → WARNING (do not stop, could be passive regen). */
-    const val EGT_WARNING_THRESHOLD: Float    = 450f
-    /** Above this → ACTIVE (confirmed active regen, ECU post-injection likely). */
-    const val EGT_ACTIVE_THRESHOLD: Float     = 550f
-    /** Consecutive samples above [EGT_ACTIVE_THRESHOLD] required before
-     *  declaring ACTIVE (20 s ÷ 3 s poll = ~7 samples). */
-    private const val EGT_ACTIVE_CONFIRM_COUNT = 7
+    // ── Odometer glitch filter ──────────────────────────────────────────────────
+    /** Max plausible forward step between two accepted odometer readings (km). */
+    private const val ODO_MAX_STEP_KM    = 50L
+    /** A backward move or a jump beyond [ODO_MAX_STEP_KM] must repeat within this
+     *  tolerance before it is trusted — filters one-off parser glitches. */
+    private const val ODO_CONFIRM_TOL_KM = 3L
+    private const val ODO_JUMP_CONFIRM   = 2
 
     // ── Internal mutable state ────────────────────────────────────────────────
     private val _dpfData = MutableStateFlow(DpfData())
     val dpfData: StateFlow<DpfData> = _dpfData.asStateFlow()
 
-    /** Running count of consecutive samples above [EGT_ACTIVE_THRESHOLD]. */
-    private var egtActiveCounter = 0
+    /** EGT-based regen state machine (pure, unit-tested — see RegenEvaluator). */
+    private val regenEvaluator = RegenEvaluator()
+
+    // ── Odometer glitch-filter state ────────────────────────────────────────────
+    /** Last odometer value accepted as valid (mirrored in SharedPreferences). */
+    private var lastGoodOdometerKm = 0L
+    /** Candidate odometer awaiting confirmation (anomalous jump). */
+    private var pendingOdometerKm = 0L
+    private var pendingOdometerCount = 0
 
     /** SharedPreferences instance — initialised once via [init]. */
     private lateinit var prefs: SharedPreferences
@@ -74,11 +80,19 @@ object DpfRepository {
     private var stoppedSampleCount = 0
 
     /** Number of consecutive stopped samples required before arming the cooldown.
-     *  OBD2 polls every ~3 s → 5 samples ≈ 15 seconds stopped. */
+     *  OBD2 polls every ~1.5 s → 5 samples ≈ 7–8 seconds stopped. */
     private const val COOLDOWN_STOPPED_SAMPLES_NEEDED = 5
+
+    /** Minimum time since the previous cooldown before a new one may arm.
+     *  Prevents a burst of start/cancel notifications in stop-and-go traffic
+     *  (which used to hammer SystemUI and freeze the launcher). */
+    private const val COOLDOWN_REARM_GUARD_MS = 120_000L
 
     /** Running cooldown coroutine (null when inactive). */
     private var cooldownJob: Job? = null
+
+    /** Timestamp of the last cooldown start/cancel — see [COOLDOWN_REARM_GUARD_MS]. */
+    private var lastCooldownActivityMs = 0L
 
     /** Dedicated scope for the cooldown timer. Survives across data updates. */
     private val cooldownScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -113,8 +127,13 @@ object DpfRepository {
     /** Must be called once from Application.onCreate(). */
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        // Distance counters (kmSinceLastRegen, kmSinceOilChange) are now read live
-        // from the ECU via PID 22 050B and 22 0542 — no local persistence needed.
+        // Seed the odometer from the last persisted value so maintenance km are
+        // available immediately — before the first ECU read and while offline.
+        // Distance counters (kmSinceLastRegen, kmSinceOilChange) stay live-only.
+        lastGoodOdometerKm = prefs.getLong(KEY_LAST_ODO, 0L)
+        if (lastGoodOdometerKm > 0L) {
+            _dpfData.value = _dpfData.value.copy(odometerKm = lastGoodOdometerKm)
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -123,6 +142,7 @@ object DpfRepository {
 
     fun updateSoot(percentage: Float) {
         _dpfData.value = _dpfData.value.copy(sootPercentage = percentage)
+        reevaluateRegen()   // a falling soot % is itself a regen signal
     }
 
     fun updateLoad(percentage: Float) {
@@ -133,40 +153,10 @@ object DpfRepository {
         _dpfData.value = _dpfData.value.copy(coolantTempC = celsius)
     }
 
-    /**
-     * Updates the EGT reading and immediately re-evaluates the regen status
-     * using Strategy B (EGT fallback). Strategy A [updateRegenFlag] takes
-     * priority if the PID becomes available.
-     */
+    /** Updates the inlet EGT reading and re-evaluates the regen status. */
     fun updateEgt(celsius: Float) {
-        val previous = _dpfData.value
-        val newStatus = computeRegenStatusFromEgt(celsius, previous.regenStatus)
-        val newData = previous.copy(
-            egtCelsius    = celsius,
-            regenStatus   = newStatus,
-            regenStrategy = RegenStrategy.EGT_FALLBACK
-        )
-        applyStatusChange(previous, newData)
-    }
-
-    /**
-     * Strategy A — ECU direct flag PID response.
-     * [flagActive] = true if the ECU response byte equals 0x01.
-     * Overrides the EGT-based status when available.
-     */
-    fun updateRegenFlag(flagActive: Boolean) {
-        val previous = _dpfData.value
-        val newStatus = when {
-            flagActive                                       -> RegenStatus.ACTIVE
-            previous.regenStatus == RegenStatus.ACTIVE ||
-            previous.regenStatus == RegenStatus.WARNING     -> RegenStatus.COMPLETED
-            else                                            -> RegenStatus.INACTIVE
-        }
-        val newData = previous.copy(
-            regenStatus   = newStatus,
-            regenStrategy = RegenStrategy.DIRECT_FLAG
-        )
-        applyStatusChange(previous, newData)
+        _dpfData.value = _dpfData.value.copy(egtCelsius = celsius)
+        reevaluateRegen()
     }
 
     /**
@@ -177,7 +167,38 @@ object DpfRepository {
         _dpfData.value = _dpfData.value.copy(dpfDeltaPressureKpa = kPa)
     }
 
+    /**
+     * Updates the odometer with glitch filtering:
+     *   • ignores zero/garbage reads,
+     *   • accepts normal forward progress (0..[ODO_MAX_STEP_KM]),
+     *   • requires a backward move or a big forward jump to repeat before trusting
+     *     it (filters one-off parser glitches; self-heals a bad persisted value),
+     *   • persists the last good value so it survives disconnects/restarts.
+     */
     fun updateOdometer(km: Long) {
+        if (km <= 0L) return   // no data / garbage
+
+        val last = lastGoodOdometerKm
+        if (last == 0L || (km >= last && km <= last + ODO_MAX_STEP_KM)) {
+            acceptOdometer(km)
+            return
+        }
+
+        // Anomalous (backward, or forward jump beyond the plausible step):
+        // accept only after two consecutive close readings.
+        if (kotlin.math.abs(km - pendingOdometerKm) <= ODO_CONFIRM_TOL_KM) {
+            if (++pendingOdometerCount >= ODO_JUMP_CONFIRM) acceptOdometer(km)
+        } else {
+            pendingOdometerKm = km
+            pendingOdometerCount = 1
+        }
+    }
+
+    private fun acceptOdometer(km: Long) {
+        lastGoodOdometerKm = km
+        pendingOdometerKm = 0L
+        pendingOdometerCount = 0
+        if (::prefs.isInitialized) prefs.edit().putLong(KEY_LAST_ODO, km).apply()
         _dpfData.value = _dpfData.value.copy(odometerKm = km)
     }
 
@@ -229,14 +250,43 @@ object DpfRepository {
         _dpfData.value = _dpfData.value.copy(oilTempC = celsius)
     }
 
-    /** Updates post-DPF EGT sensor 2 in °C (from PID 01 78 byte pair 5–6). */
+    /** Updates post-DPF EGT sensor 2 in °C (from PID 01 78 byte pair 5–6).
+     *  Feeds the exotherm signal (outlet − inlet) of the regen detector. */
     fun updateEgtPost(celsius: Float) {
         _dpfData.value = _dpfData.value.copy(egtPostDpfC = celsius)
+        reevaluateRegen()
     }
 
     fun updateBleConnected(connected: Boolean) {
         _dpfData.value = _dpfData.value.copy(bleConnected = connected)
-        if (!connected) resetCooldown(fireCancelledCallback = false)  // reset on disconnect, no notification
+        if (!connected) {
+            resetCooldown(fireCancelledCallback = false)  // reset on disconnect, no notification
+            regenEvaluator.reset()   // clear soot history so a reconnect can't false-trigger
+        }
+    }
+
+    /**
+     * Re-runs the multi-signal regen detector on the current data snapshot and
+     * applies any resulting status/strategy change. Called after every EGT, soot
+     * or outlet-EGT update so all three detection signals stay current.
+     */
+    private fun reevaluateRegen() {
+        val previous = _dpfData.value
+        val result = regenEvaluator.evaluate(
+            RegenSample(
+                egtPre      = previous.egtCelsius,
+                egtPost     = previous.egtPostDpfC,
+                soot        = previous.sootPercentage,
+                coolant     = previous.coolantTempC,
+                timestampMs = System.currentTimeMillis()
+            ),
+            previous.regenStatus
+        )
+        val updated = previous.copy(
+            regenStatus   = result.status,
+            regenStrategy = result.strategy
+        )
+        applyStatusChange(previous, updated)
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -254,7 +304,7 @@ object DpfRepository {
             onRegenStatusChanged?.invoke(previous.regenStatus, updated.regenStatus)
 
             // Fire history session events on state transitions.
-            // "STARTED" fires only on ACTIVE (EGT>550°C for 20+ s confirmed) —
+            // "STARTED" fires only on ACTIVE (EGT>550°C sustained ~10 s, confirmed) —
             // NOT on WARNING, to avoid false entries from hard acceleration spikes.
             when {
                 updated.regenStatus == RegenStatus.ACTIVE &&
@@ -276,45 +326,6 @@ object DpfRepository {
         // Emit periodic data points while regen is active
         if (updated.regenStatus == RegenStatus.ACTIVE) {
             onRegenSessionEvent?.invoke("DATA_POINT", updated)
-        }
-    }
-
-    /**
-     * Strategy B — derives [RegenStatus] purely from EGT temperature.
-     *
-     * Hysteresis and a confirmation counter prevent rapid oscillation:
-     *   • Going to ACTIVE requires [EGT_ACTIVE_CONFIRM_COUNT] consecutive hot samples.
-     *   • Going back to INACTIVE requires EGT to drop below [EGT_SAFE_THRESHOLD].
-     */
-    private fun computeRegenStatusFromEgt(egt: Float, current: RegenStatus): RegenStatus {
-        return when {
-            // ── Transition to ACTIVE (confirmation counter) ───────────────────
-            egt >= EGT_ACTIVE_THRESHOLD -> {
-                egtActiveCounter++
-                if (egtActiveCounter >= EGT_ACTIVE_CONFIRM_COUNT) RegenStatus.ACTIVE
-                else current.takeIf { it == RegenStatus.ACTIVE } ?: RegenStatus.WARNING
-            }
-
-            // ── Transition to WARNING ─────────────────────────────────────────
-            egt >= EGT_WARNING_THRESHOLD -> {
-                egtActiveCounter = 0
-                if (current == RegenStatus.ACTIVE) RegenStatus.ACTIVE  // stay until cooled
-                else RegenStatus.WARNING
-            }
-
-            // ── Cooling down — was previously hot ─────────────────────────────
-            egt < EGT_SAFE_THRESHOLD && (current == RegenStatus.ACTIVE ||
-                                          current == RegenStatus.WARNING) -> {
-                egtActiveCounter = 0
-                RegenStatus.COMPLETED
-            }
-
-            // ── Normal operation ──────────────────────────────────────────────
-            else -> {
-                egtActiveCounter = 0
-                if (current == RegenStatus.COMPLETED) RegenStatus.COMPLETED  // keep briefly
-                else RegenStatus.INACTIVE
-            }
         }
     }
 
@@ -353,7 +364,9 @@ object DpfRepository {
 
         if (engineAtIdle && vehicleStopped) {
             stoppedSampleCount++
-            if (stoppedSampleCount >= COOLDOWN_STOPPED_SAMPLES_NEEDED) startCooldown()
+            val guardPassed =
+                System.currentTimeMillis() - lastCooldownActivityMs >= COOLDOWN_REARM_GUARD_MS
+            if (stoppedSampleCount >= COOLDOWN_STOPPED_SAMPLES_NEEDED && guardPassed) startCooldown()
         } else {
             stoppedSampleCount = 0   // moved again (green light, traffic) → reset
         }
@@ -363,6 +376,7 @@ object DpfRepository {
      *  [onCooldownComplete]. No StateFlow updates — cooldown lives entirely in
      *  background notifications managed by DpfForegroundService. */
     private fun startCooldown() {
+        lastCooldownActivityMs = System.currentTimeMillis()
         onCooldownStarted?.invoke()
         cooldownJob = cooldownScope.launch {
             delay(COOLDOWN_DURATION_MS)
@@ -383,6 +397,8 @@ object DpfRepository {
         cooldownJob = null
         wasMoving = false
         stoppedSampleCount = 0
+        // Extend the re-arm guard from the moment a cooldown ends/cancels.
+        if (wasActive) lastCooldownActivityMs = System.currentTimeMillis()
         if (fireCancelledCallback && wasActive) {
             onCooldownCancelled?.invoke()
         }

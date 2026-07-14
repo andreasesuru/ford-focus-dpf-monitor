@@ -39,9 +39,9 @@ data class DpfData(
     /** Engine coolant temperature in °C. PID 01 05. Range: typically 70–110 °C. */
     val coolantTempC: Float = -1f,
 
-    /** Exhaust Gas Temperature (EGT) in °C.
-     *  PID 22 XXXX — replace with the real Ford Focus PID found via ForScan.
-     *  Range: 150–700 °C. Critical for regen detection (Strategy B). */
+    /** Exhaust Gas Temperature (EGT) in °C — inlet / pre-DPF.
+     *  PID 01 78 (EGT Bank 1, sensor 1). Formula: (A*256+B)*0.1 - 40.
+     *  Range: 150–700 °C. A key input for regen detection (see [RegenEvaluator]). */
     val egtCelsius: Float = -1f,
 
     // ── Regeneration ─────────────────────────────────────────────────────────
@@ -106,20 +106,20 @@ data class DpfData(
 enum class RegenStatus {
 
     /**
-     * EGT < 450 °C and no ECU flag.
+     * EGT < 450 °C.
      * Safe to turn off the engine — no regeneration in progress.
      */
     INACTIVE,
 
     /**
-     * EGT ≥ 450 °C (passive thermal regen may be occurring) OR ECU flag set.
+     * EGT ≥ 450 °C (passive thermal regen may be occurring).
      * DO NOT turn off the engine — could interrupt the process.
      * Notification: CarToast + heads-up with custom chime.
      */
     WARNING,
 
     /**
-     * EGT ≥ 550 °C sustained for 20+ seconds, OR ECU direct flag = 0x01.
+     * EGT ≥ 550 °C sustained for ~10 s (7 poll cycles).
      * Active (forced) regeneration confirmed.
      * DO NOT turn off the engine — post-injection fuel is being used.
      * Notification: CarToast + heads-up with custom chime (highest priority).
@@ -140,14 +140,17 @@ enum class RegenStatus {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 enum class RegenStrategy {
-    /** No detection in progress — status is INACTIVE. */
+    /** No detection in progress. */
     NONE,
 
-    /** Strategy A: ECU direct flag PID responded with 0x01. Most accurate. */
-    DIRECT_FLAG,
+    /** Inlet EGT ≥ 550 °C sustained (classic post-injection active regen). */
+    EGT_TEMP,
 
-    /** Strategy B: EGT threshold crossed (no direct flag available). */
-    EGT_FALLBACK
+    /** Soot % falling steadily while the engine is warm (soot being burned off). */
+    SOOT_DROP,
+
+    /** Outlet EGT much hotter than inlet — exothermic soot combustion in the filter. */
+    EXOTHERM
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -116,14 +116,19 @@ class MaintenanceAdapter(
         else
             "Prossimo a %,d km".format(dueAt)
 
-        // ── Buttons — hidden for auto-managed entries ─────────────────────────
+        // ── Buttons ───────────────────────────────────────────────────────────
         if (reminder.isAutoManaged) {
+            // Auto-managed tagliando: the "done" km is synced from the ECU, but the
+            // user can still change the interval (alert limit). No Done/Delete.
             holder.btnDone.visibility   = View.GONE
-            holder.btnEdit.visibility   = View.GONE
             holder.btnDelete.visibility = View.GONE
+            holder.btnEdit.visibility   = View.VISIBLE
+            holder.btnEdit.text = "Intervallo"
+            holder.btnEdit.setOnClickListener { onEditClick(reminder) }
         } else {
             holder.btnDone.visibility   = View.VISIBLE
             holder.btnEdit.visibility   = View.VISIBLE
+            holder.btnEdit.text = "Modifica"
             holder.btnDelete.visibility = View.VISIBLE
             holder.btnDone.setOnClickListener   { onDoneClick(reminder) }
             holder.btnEdit.setOnClickListener   { onEditClick(reminder) }

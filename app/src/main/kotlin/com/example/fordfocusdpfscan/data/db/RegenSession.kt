@@ -46,7 +46,8 @@ data class RegenSession(
     /** Total regen duration in minutes. */
     val durationMinutes: Int? = null,
 
-    /** "ACTIVE" (EGT-confirmed) or "WARNING" (EGT warning only). */
+    /** Always "ACTIVE": a session starts only when regen is EGT-confirmed
+     *  (EGT ≥ 550 °C sustained). Retained as a column for backward compatibility. */
     val regenType: String = "ACTIVE",
 
     /** "IN_PROGRESS", "COMPLETED", or "INTERRUPTED" (engine turned off mid-regen). */

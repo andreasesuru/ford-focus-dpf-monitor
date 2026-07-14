@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/versione-4.7-blue"/>
+  <img src="https://img.shields.io/badge/versione-4.9-blue"/>
   <img src="https://img.shields.io/badge/Android-8.0%2B-green"/>
   <img src="https://img.shields.io/badge/Kotlin-2.x-purple"/>
   <img src="https://img.shields.io/badge/Android%20Auto-✓-orange"/>
@@ -41,7 +41,7 @@
 - Gauge circolari per **DPF Load %** e **DPF Soot %** con colori in tempo reale
 - **Delta P** (pressione differenziale) con range idle/marcia
 - **Stato rigenerazione** automatico: Inattiva / Warning / Attiva / Completata
-- Rilevamento regen con doppia strategia: flag ECU diretto o fallback temperatura EGT
+- Rilevamento regen **multi-segnale**: EGT ingresso ≥550 °C, **calo del soot** nel tempo, o esotermia del filtro (uscita ≫ ingresso) — cattura anche le regen a temperatura moderata
 - Temperature: EGT, refrigerante
 - Distanze ECU: odometro, km da ultima regen, km da ultimo tagliando
 
@@ -54,13 +54,14 @@
 ### 📋 Storico
 - Registrazione automatica di ogni sessione di rigenerazione
 - Grafico a barre Soot prima/dopo per le ultime 8 sessioni
-- Card sessione con: data, km, tipo regen (🔴 Forzata ECU / 🌡 Passiva), EGT picco, risultato
+- Card sessione con: data, km, rilevamento (🌡 via temperatura EGT), EGT picco, risultato
 - Export report HTML per il meccanico tramite share sheet
 
 ### 🔧 Servizi
 - Promemoria manutenzione con card colorate: **verde / arancio / rosso** in base ai km rimanenti
 - Barra di avanzamento km usati / intervallo per ogni promemoria
-- **Tagliando olio gestito automaticamente** dalla centralina (PID 22 0542): si aggiorna da solo ad ogni connessione, senza input manuale
+- **Tagliando olio gestito automaticamente** dalla centralina (PID 22 0542): si aggiorna da solo ad ogni connessione, senza input manuale — con **intervallo di avviso modificabile**
+- Odometro robusto: ultimo valore valido memorizzato, disponibile anche offline, con filtro anti-glitch
 - Aggiunta promemoria personalizzati (titolo, intervallo km, ultimo intervento)
 - Pulsante **Fatto** con dialogo di conferma + registrazione km per azzerare il countdown
 - Pulsanti **Modifica** ed **Elimina** per ogni promemoria
@@ -75,6 +76,7 @@
 
 ### 🚗 Android Auto / Sync 3
 - Dashboard con 3 righe: **Filtro DPF**, **Rigenerazione**, **Info Motore**
+- Riga **Info Motore**: EGT ingresso · EGT uscita · temperatura motore
 - Valori colorati (verde/giallo/rosso) in base alle soglie
 - CarToast su ogni transizione di stato regen
 - Tasto **Ricollega** per riconnettere il dongle senza toccare il telefono
