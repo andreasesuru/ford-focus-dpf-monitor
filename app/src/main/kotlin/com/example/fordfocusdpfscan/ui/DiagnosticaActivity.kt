@@ -72,13 +72,16 @@ class DiagnosticaActivity : BaseTabActivity() {
     private lateinit var cDeltaP:   Cell
     private lateinit var cEgtPre:   Cell
     private lateinit var cEgtPost:  Cell
-    private lateinit var cDeltaEgt: Cell
     // Motore Live
     private lateinit var cRpm:      Cell
     private lateinit var cSpeed:    Cell
     private lateinit var cEngLoad:  Cell
     private lateinit var cBoost:    Cell
     private lateinit var cCoolant:  Cell
+    // Alimentazione / Elettrico
+    private lateinit var cBattery:   Cell
+    private lateinit var cRail:      Cell
+    private lateinit var cIntakeAir: Cell
     // Distanze
     private lateinit var cKmRegen:  Cell
     private lateinit var cKmOil:    Cell
@@ -117,13 +120,16 @@ class DiagnosticaActivity : BaseTabActivity() {
         cDeltaP   = Cell(findViewById(R.id.cellDeltaP))
         cEgtPre   = Cell(findViewById(R.id.cellEgtPre))
         cEgtPost  = Cell(findViewById(R.id.cellEgtPost))
-        cDeltaEgt = Cell(findViewById(R.id.cellDeltaEgt))
 
         cRpm      = Cell(findViewById(R.id.cellRpm))
         cSpeed    = Cell(findViewById(R.id.cellSpeed))
         cEngLoad  = Cell(findViewById(R.id.cellEngineLoad))
         cBoost    = Cell(findViewById(R.id.cellBoost))
         cCoolant  = Cell(findViewById(R.id.cellCoolant))
+
+        cBattery   = Cell(findViewById(R.id.cellBattery))
+        cRail      = Cell(findViewById(R.id.cellRail))
+        cIntakeAir = Cell(findViewById(R.id.cellIntakeAir))
 
         cKmRegen  = Cell(findViewById(R.id.cellKmRegen))
         cKmOil    = Cell(findViewById(R.id.cellKmOil))
@@ -135,8 +141,7 @@ class DiagnosticaActivity : BaseTabActivity() {
         cLoad    .setup("LOAD DPF",      "%",    "normale < 50% · critico > 80%")
         cDeltaP  .setup("DELTA P",       "kPa",  "idle ~0 · marcia 5-15 kPa")
         cEgtPre  .setup("EGT INGRESSO",  "°C",   "normale < 500°C · regen 600-700°C")
-        cEgtPost .setup("EGT USCITA",    "°C",   "normale < 500°C")
-        cDeltaEgt.setup("ΔT EGT",        "°C",   "< 0 = regen attiva · < −50 = regen intensa")
+        cEgtPost .setup("EGT USCITA",    "°C",   "secondo sensore EGT di scarico")
 
         cRpm    .setup("RPM",            "rpm",  "minimo ~800 · normale 1.000-3.000")
         cSpeed  .setup("VELOCITÀ",       "km/h", "")
@@ -144,7 +149,11 @@ class DiagnosticaActivity : BaseTabActivity() {
         cBoost  .setup("BOOST",          "bar",  "normale 0-1,5 bar")
         cCoolant.setup("REFRIGERANTE",   "°C",   "ottimale 70-110°C")
 
-        cKmRegen .setup("KM DA REGEN",   "km",   "intervallo tipico 400-600 km")
+        cBattery  .setup("BATTERIA",       "V",   "acceso 13,8-14,4 V · debole < 12 V")
+        cRail     .setup("PRESSIONE RAIL", "bar", "minimo ~250 · pieno carico ~1.600")
+        cIntakeAir.setup("TEMP ARIA",      "°C",  "aria aspirata al collettore")
+
+        cKmRegen .setup("KM ALLA REGEN", "km",   "stima ECU · scende guidando · ~0 = regen vicina")
         cKmOil   .setup("KM TAGLIANDO",  "km",   "cambio olio ogni 10-12.000 km")
         cOdometer.setup("ODOMETRO",      "km",   "chilometri totali dalla ECU")
     }
@@ -160,6 +169,7 @@ class DiagnosticaActivity : BaseTabActivity() {
                     if (data.bleConnected) View.GONE else View.VISIBLE
                 updateDpfSection(data)
                 updateEngineSection(data)
+                updateElectricalSection(data)
                 updateDistanceSection(data)
             }
         }
@@ -211,23 +221,6 @@ class DiagnosticaActivity : BaseTabActivity() {
             else                 -> colorDanger
         })
 
-        // ΔT EGT = pre − post.
-        // delta > 0 → pre > post: normal (gas cools slightly through DPF housing).
-        // delta < 0 → post > pre: DPF generating heat = regen in progress.
-        // delta < −50 → strong active regen burn.
-        if (d.egtCelsius >= 0f && d.egtPostDpfC >= 0f) {
-            val delta = d.egtCelsius - d.egtPostDpfC
-            cDeltaEgt.value.text = "%+.0f".format(delta)
-            cDeltaEgt.setColor(when {
-                delta >= 0f          -> colorOk      // pre ≥ post: normal cooling
-                delta >= -50f        -> colorWarn    // post slightly hotter: regen warming
-                d.egtCelsius < 400f  -> colorWarn    // EGT troppo fredda per regen reale — delta spuria
-                else                 -> colorDanger  // post >> pre E EGT calda: regen attiva confermata
-            })
-        } else {
-            cDeltaEgt.value.text = "—"
-            cDeltaEgt.setColor(colorMuted)
-        }
     }
 
     private fun updateEngineSection(d: DpfData) {
@@ -275,13 +268,39 @@ class DiagnosticaActivity : BaseTabActivity() {
 
     }
 
+    private fun updateElectricalSection(d: DpfData) {
+        // Battery / charging voltage
+        cBattery.set(d.batteryVoltage, 1)
+        cBattery.setColor(when {
+            d.batteryVoltage < 0f     -> colorMuted
+            d.batteryVoltage < 12.0f  -> colorDanger   // scarica / non in carica
+            d.batteryVoltage < 13.0f  -> colorWarn
+            d.batteryVoltage <= 15.0f -> colorOk
+            else                      -> colorWarn      // sovraccarica
+        })
+
+        // Fuel rail pressure — stored in kPa, shown in bar
+        if (d.fuelRailPressureKpa >= 0f) {
+            cRail.value.text = "%.0f".format(d.fuelRailPressureKpa / 100f)
+            cRail.setColor(colorPrimary)
+        } else {
+            cRail.value.text = "—"
+            cRail.setColor(colorMuted)
+        }
+
+        // Intake air temperature
+        cIntakeAir.set(d.intakeAirTempC, 0)
+        cIntakeAir.setColor(if (d.intakeAirTempC < 0f) colorMuted else colorPrimary)
+    }
+
     private fun updateDistanceSection(d: DpfData) {
+        // 22 050B is a live ECU countdown toward the next regen (falls as you drive,
+        // resets up after a regen) — so low = regen imminent, not "overdue".
         cKmRegen.setLong(d.kmSinceLastRegen)
         cKmRegen.setColor(when {
-            d.kmSinceLastRegen < 0L    -> colorMuted
-            d.kmSinceLastRegen < 500L  -> colorOk
-            d.kmSinceLastRegen < 800L  -> colorWarn
-            else                       -> colorDanger
+            d.kmSinceLastRegen < 0L   -> colorMuted
+            d.kmSinceLastRegen < 50L  -> colorWarn   // regen imminente
+            else                      -> colorOk
         })
 
         cKmOil.setLong(d.kmSinceOilChange)

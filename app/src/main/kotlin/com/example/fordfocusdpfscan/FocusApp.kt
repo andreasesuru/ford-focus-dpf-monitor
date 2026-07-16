@@ -4,6 +4,10 @@ import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
 import com.example.fordfocusdpfscan.car.NotificationHelper
 import com.example.fordfocusdpfscan.data.DpfRepository
+import com.example.fordfocusdpfscan.data.RegenHistoryRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // FocusApp.kt — Application class.
@@ -36,5 +40,18 @@ class FocusApp : Application() {
         // regen notification fires caused a ServiceANR. Doing it here at startup
         // (background thread) ensures it is ready before any notification fires.
         NotificationHelper.warmIconCache(this)
+
+        // One-time cleanup: re-label legacy false-positive "interrupted" regens
+        // (recorded by the old detector) so they aren't shown or read by the AI
+        // as problems. Runs once; guarded by a flag.
+        val prefs = getSharedPreferences("focus_prefs", MODE_PRIVATE)
+        if (!prefs.getBoolean("relabel_legacy_v1", false)) {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    RegenHistoryRepository(this@FocusApp).relabelLegacyInterrupted()
+                    prefs.edit().putBoolean("relabel_legacy_v1", true).apply()
+                } catch (_: Exception) { /* retry on next launch */ }
+            }
+        }
     }
 }

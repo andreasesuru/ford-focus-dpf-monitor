@@ -257,6 +257,21 @@ object DpfRepository {
         reevaluateRegen()
     }
 
+    /** Updates control module / battery voltage in V (PID 01 42). */
+    fun updateBatteryVoltage(volts: Float) {
+        _dpfData.value = _dpfData.value.copy(batteryVoltage = volts)
+    }
+
+    /** Updates fuel rail pressure in kPa (PID 01 23 / 01 59). */
+    fun updateFuelRailPressure(kpa: Float) {
+        _dpfData.value = _dpfData.value.copy(fuelRailPressureKpa = kpa)
+    }
+
+    /** Updates intake air temperature in °C (PID 01 0F). */
+    fun updateIntakeAirTemp(celsius: Float) {
+        _dpfData.value = _dpfData.value.copy(intakeAirTempC = celsius)
+    }
+
     fun updateBleConnected(connected: Boolean) {
         _dpfData.value = _dpfData.value.copy(bleConnected = connected)
         if (!connected) {

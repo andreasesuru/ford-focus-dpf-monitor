@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/versione-4.9-blue"/>
+  <img src="https://img.shields.io/badge/versione-4.19-blue"/>
   <img src="https://img.shields.io/badge/Android-8.0%2B-green"/>
   <img src="https://img.shields.io/badge/Kotlin-2.x-purple"/>
   <img src="https://img.shields.io/badge/Android%20Auto-✓-orange"/>
@@ -48,13 +48,27 @@
 ### 📡 Diagnostica
 - Sensori motore live: RPM, velocità, carico motore, boost (MAP)
 - Sezione DPF avanzata: Soot %, Load %, Delta P, EGT, ΔT pre-post DPF
+- Sezione Alimentazione: **tensione batteria**, **pressione rail carburante**, **temperatura aria aspirata**
 - Barra colorata di stato per ogni cella (verde / ambra / rossa)
 - Hint contestuali con range normali per ogni parametro
+
+### 🩺 Codici errore (DTC)
+- Lettura spia motore dalla centralina: codici **confermati / in sospeso / permanenti**
+- Descrizioni in italiano dei codici più comuni (DPF, EGR, common-rail, turbo, candelette)
+- Cancellazione codici con conferma (spegne la spia motore)
+
+### 🤖 Assistente AI (opzionale)
+- Integrazione **Claude API** con chiave inserita dall'utente (resta solo sul telefono)
+- **Spiega codici errore** in linguaggio naturale, con il contesto dei dati live
+- **Analizza scansione ECU** per identificare PID sconosciuti (es. diluizione olio) e proporne la formula
+- **Monitoraggio costi** in-app (stima locale dai token di ogni risposta)
+- Modello selezionabile: Haiku 4.5 / Sonnet 5 / Opus 4.8
 
 ### 📋 Storico
 - Registrazione automatica di ogni sessione di rigenerazione
 - Grafico a barre Soot prima/dopo per le ultime 8 sessioni
 - Card sessione con: data, km, rilevamento (🌡 via temperatura EGT), EGT picco, risultato
+- **Salute DPF**: distanza media tra le rigenerazioni con indicatore di stato
 - Export report HTML per il meccanico tramite share sheet
 
 ### 🔧 Servizi

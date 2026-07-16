@@ -134,4 +134,20 @@ class RegenEvaluatorTest {
         ev.reset()
         assertEquals(0, ev.activeCounter)
     }
+
+    // ── Anti-false-positive: high EGT while soot is RISING = hard driving ──────
+
+    @Test fun egtHigh_butSootRising_staysWarning() {
+        // Sustained 600°C EGT but soot climbing 10→18 → hard driving, not a regen.
+        for (i in 0..7) ev.evaluate(sample(600f, soot = (10 + i).toFloat(), coolant = 90f, t = i * 15_000L), RegenStatus.WARNING)
+        val r = ev.evaluate(sample(600f, soot = 18f, coolant = 90f, t = 120_000L), RegenStatus.WARNING)
+        assertEquals(RegenStatus.WARNING, r.status)
+    }
+
+    @Test fun egtHigh_withSootFlat_isActive() {
+        // Same sustained heat but soot flat (not accumulating) → real regen.
+        for (i in 0..6) ev.evaluate(sample(600f, soot = 10f, coolant = 90f, t = i * 15_000L), RegenStatus.WARNING)
+        val r = ev.evaluate(sample(600f, soot = 10f, coolant = 90f, t = 105_000L), RegenStatus.WARNING)
+        assertEquals(RegenStatus.ACTIVE, r.status)
+    }
 }

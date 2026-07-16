@@ -37,7 +37,7 @@ class EcuPidScanner(private val bleManager: BleManager) {
 
         private const val TIMEOUT_PRIORITY_MS = 600L
         private const val TIMEOUT_SWEEP_MS    = 200L
-        private const val INTER_CMD_DELAY_MS  = 50L   // 25ms causava shift risposte ELM327
+        private const val INTER_CMD_DELAY_MS  = 90L   // margin for late ELM327 replies; sendRawCommand also drains stale ones
 
         // ── Human-readable labels for known PIDs ──────────────────────────────
         // Keys are in display format: "01 05", "22 1149", "09 02"

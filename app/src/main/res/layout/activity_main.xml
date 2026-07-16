@@ -155,7 +155,43 @@
                             app:strokeColor="@color/dpf_orange"
                             app:strokeWidth="1dp" />
 
+                        <!-- Fault-code reader button — visible only when connected -->
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnReadDtc"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="🔧  Codici errore (spia motore)"
+                            android:textSize="12sp"
+                            android:visibility="gone"
+                            app:backgroundTint="@color/dpf_blue_dark"
+                            app:strokeColor="@color/dpf_orange"
+                            app:strokeWidth="1dp" />
+
                     </LinearLayout>
+
+                    <!-- AI Assistant (chat) — always visible -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnAiAssistant"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="💬  Assistente AI"
+                        android:textSize="12sp"
+                        app:backgroundTint="@color/dpf_blue_dark"
+                        app:strokeColor="@color/dpf_orange"
+                        app:strokeWidth="1dp" />
+
+                    <!-- AI Settings — always visible (key + cost monitor) -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnAiSettings"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="🤖  Impostazioni AI"
+                        android:textSize="12sp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        app:strokeColor="@color/dpf_orange" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -549,7 +585,7 @@
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Ultima regen (LST REG)"
+                            android:text="Prossima regen (stima)"
                             android:textColor="@color/text_secondary"
                             android:textSize="13sp" />
 

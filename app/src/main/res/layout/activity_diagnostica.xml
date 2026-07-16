@@ -148,28 +148,11 @@
                     <View android:layout_width="match_parent" android:layout_height="1dp"
                         android:background="@color/card_border"/>
 
-                    <!-- Row 3: EGT post-DPF | ΔT (pre−post) -->
-                    <LinearLayout
+                    <!-- Row 3: EGT post-DPF (full width) -->
+                    <include layout="@layout/item_diag_cell"
+                        android:id="@+id/cellEgtPost"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal">
-
-                        <include layout="@layout/item_diag_cell"
-                            android:id="@+id/cellEgtPost"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"/>
-
-                        <View android:layout_width="1dp" android:layout_height="match_parent"
-                            android:background="@color/card_border"/>
-
-                        <include layout="@layout/item_diag_cell"
-                            android:id="@+id/cellDeltaEgt"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"/>
-
-                    </LinearLayout>
+                        android:layout_height="wrap_content"/>
 
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
@@ -273,6 +256,84 @@
                     <!-- Row 3: Coolant (full width — oil temp PID 01 5C not available on this ECU) -->
                     <include layout="@layout/item_diag_cell"
                         android:id="@+id/cellCoolant"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"/>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- ══════════════════════════════════════════════════════════ -->
+            <!-- SECTION: ALIMENTAZIONE / ELETTRICO                        -->
+            <!-- ══════════════════════════════════════════════════════════ -->
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="20dp"
+                android:paddingTop="14dp"
+                android:paddingBottom="6dp">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🔌  ALIMENTAZIONE"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:letterSpacing="0.08"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Batteria, pressione carburante, aria aspirata"
+                    android:textColor="@color/text_hint"
+                    android:textSize="10sp"
+                    android:layout_marginTop="1dp"/>
+            </LinearLayout>
+
+            <androidx.cardview.widget.CardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="8dp"
+                app:cardBackgroundColor="@color/card_background"
+                app:cardCornerRadius="14dp"
+                app:cardElevation="0dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="4dp">
+
+                    <!-- Row 1: Battery voltage | Fuel rail pressure -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <include layout="@layout/item_diag_cell"
+                            android:id="@+id/cellBattery"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"/>
+
+                        <View android:layout_width="1dp" android:layout_height="match_parent"
+                            android:background="@color/card_border"/>
+
+                        <include layout="@layout/item_diag_cell"
+                            android:id="@+id/cellRail"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"/>
+
+                    </LinearLayout>
+
+                    <View android:layout_width="match_parent" android:layout_height="1dp"
+                        android:background="@color/card_border"/>
+
+                    <!-- Row 2: Intake air temp (full width) -->
+                    <include layout="@layout/item_diag_cell"
+                        android:id="@+id/cellIntakeAir"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"/>
 

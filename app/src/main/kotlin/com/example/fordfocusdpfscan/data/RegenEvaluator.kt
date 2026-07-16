@@ -42,6 +42,9 @@ class RegenEvaluator {
         const val SOOT_DROP_MIN_SPAN_MS = 90_000L
         /** Minimum net soot drop (percentage points) across the window → regen. */
         const val SOOT_DROP_MIN_PCT = 2f
+        /** Minimum net soot RISE across the window that flags "hard driving, not a
+         *  regen" — used to veto a high-EGT ACTIVE (a real regen burns soot off). */
+        const val SOOT_RISE_MIN_PCT = 2f
 
         // ── "Engine warm" gate for soot-drop (avoids cold-start model noise) ─────
         const val WARM_COOLANT_C = 60f
@@ -67,16 +70,22 @@ class RegenEvaluator {
         recordSoot(sample.timestampMs, sample.soot)
 
         // ── 1. Active-regen signals ───────────────────────────────────────────
-        val egtHigh = if (sample.egtPre >= EGT_ACTIVE_THRESHOLD) {
+        val warm = sample.coolant >= WARM_COOLANT_C || sample.egtPre >= WARM_EGT_C
+        val sootDelta = sootDropInWindow(sample.timestampMs)   // + = soot fell, − = soot rose
+        val sootDrop   = warm && sootDelta >= SOOT_DROP_MIN_PCT
+        val sootRising = warm && sootDelta <= -SOOT_RISE_MIN_PCT
+
+        // Sustained high inlet EGT confirms a regen — UNLESS soot is clearly rising,
+        // in which case the hot exhaust is just hard driving (a real regen burns soot
+        // off, it doesn't accumulate it). That veto kills the old false positives.
+        val egtHot = if (sample.egtPre >= EGT_ACTIVE_THRESHOLD) {
             activeCounter++
             activeCounter >= EGT_ACTIVE_CONFIRM_COUNT
         } else {
             activeCounter = 0
             false
         }
-
-        val warm = sample.coolant >= WARM_COOLANT_C || sample.egtPre >= WARM_EGT_C
-        val sootDrop = warm && sootDropInWindow(sample.timestampMs) >= SOOT_DROP_MIN_PCT
+        val egtHigh = egtHot && !sootRising
 
         val exotherm = sample.egtPost >= 0f && sample.egtPre >= 0f &&
             sample.egtPost >= EXOTHERM_MIN_POST_C &&

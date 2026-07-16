@@ -150,6 +150,26 @@ class HistoryActivity : BaseTabActivity() {
         findViewById<TextView>(R.id.tvCompleted).text     = completed.toString()
         findViewById<TextView>(R.id.tvAvgDuration).text   = "${avgDur} min"
         findViewById<TextView>(R.id.tvAvgSootReduction).text = "−${"%.1f".format(avgSoot)}%"
+
+        // ── DPF health: average distance between consecutive regens ──────────
+        // Sessions are newest-first; the gap between adjacent odometer readings
+        // is the distance the car covered between two regens. A shrinking gap
+        // means the DPF is regenerating more often (possible clogging / oil issue).
+        val odos = sessions.mapNotNull { it.preOdometerKm.takeIf { km -> km >= 0 } }
+        val intervals = odos.zipWithNext { newer, older -> newer - older }.filter { it in 1..5000 }
+        val tvInterval = findViewById<TextView>(R.id.tvRegenInterval)
+        if (intervals.isNotEmpty()) {
+            val avg = intervals.average().toInt()
+            val hint = when {
+                avg >= 400 -> "🟢 DPF in salute"
+                avg >= 250 -> "🟡 intervallo un po' corto"
+                else       -> "🔴 rigenera troppo spesso — verifica DPF/olio"
+            }
+            tvInterval.text = "🔧 Rigenerazione in media ogni ~%,d km  ·  %s".format(avg, hint)
+            tvInterval.visibility = View.VISIBLE
+        } else {
+            tvInterval.visibility = View.GONE
+        }
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -315,10 +335,11 @@ class HistoryActivity : BaseTabActivity() {
                 // Result badge
                 val tvResult = v.findViewById<TextView>(R.id.tvResult)
                 when (s.result) {
-                    "COMPLETED"   -> { tvResult.text = "✓ Completata"; tvResult.setTextColor(0xFF34C759.toInt()) }
-                    "INTERRUPTED" -> { tvResult.text = "⚠ Interrotta"; tvResult.setTextColor(0xFFFF9F0A.toInt()) }
-                    "IN_PROGRESS" -> { tvResult.text = "⟳ In corso";   tvResult.setTextColor(0xFF4F8EF7.toInt()) }
-                    else           -> { tvResult.text = s.result }
+                    "COMPLETED"     -> { tvResult.text = "✓ Completata";            tvResult.setTextColor(0xFF34C759.toInt()) }
+                    "ENDED_NATURAL" -> { tvResult.text = "✓ Terminata (naturale)"; tvResult.setTextColor(0xFF34C759.toInt()) }
+                    "INTERRUPTED"   -> { tvResult.text = "⚠ Interrotta";           tvResult.setTextColor(0xFFFF9F0A.toInt()) }
+                    "IN_PROGRESS"   -> { tvResult.text = "⟳ In corso";             tvResult.setTextColor(0xFF4F8EF7.toInt()) }
+                    else            -> { tvResult.text = s.result }
                 }
 
                 // Warning note for interrupted regens

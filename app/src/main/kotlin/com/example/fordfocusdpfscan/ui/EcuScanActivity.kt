@@ -10,11 +10,13 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.fordfocusdpfscan.ble.BleManagerHolder
 import com.example.fordfocusdpfscan.ble.EcuPidScanner
+import com.example.fordfocusdpfscan.ble.RegenStateCapture
 import com.example.fordfocusdpfscan.data.EcuScanRepository
 import com.example.fordfocusdpfscan.data.PidResult
 import com.example.fordfocusdpfscan.data.PidStatus
 import com.example.fordfocusdpfscan.data.ScanPhase
 import com.example.fordfocusdpfscan.data.ScanState
+import com.example.fordfocusdpfscan.data.ai.AiPrompts
 import com.example.fordfocusdpfscan.databinding.ActivityEcuScanBinding
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -105,7 +107,11 @@ class EcuScanActivity : AppCompatActivity() {
             binding.btnStartScan.visibility = View.GONE
             binding.btnStopScan.visibility  = View.VISIBLE
             binding.btnShareLog.isEnabled   = false
+            binding.btnAnalyzeAi.isEnabled  = false
         }
+
+        // ── Analyze with AI ─────────────────────────────────────────────────────
+        binding.btnAnalyzeAi.setOnClickListener { analyzeWithAi() }
 
         // ── Stop scan ─────────────────────────────────────────────────────────
         binding.btnStopScan.setOnClickListener {
@@ -141,6 +147,34 @@ class EcuScanActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Toast.makeText(this, "Errore salvataggio: ${e.message}", Toast.LENGTH_LONG).show()
             }
+        }
+
+        // ── Share the auto-captured regen ECU-state log ──────────────────────
+        // Filled automatically by DpfForegroundService when a regen is detected
+        // (RegenStateCapture writes to filesDir/regen_captures.txt).
+        binding.btnShareCapture.setOnClickListener { shareRegenCapture() }
+    }
+
+    /** Shares filesDir/regen_captures.txt if any regen state has been captured. */
+    private fun shareRegenCapture() {
+        val file = File(filesDir, RegenStateCapture.FILE_NAME)
+        if (!file.exists() || file.length() == 0L) {
+            Toast.makeText(this,
+                "Nessuna cattura ancora. Verrà creata in automatico durante una rigenerazione.",
+                Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            val uri = FileProvider.getUriForFile(this, "${packageName}.provider", file)
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "FOCUS — Cattura stato regen")
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, "Condividi cattura regen"))
+        } catch (e: Exception) {
+            Toast.makeText(this, "Errore condivisione: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -236,6 +270,7 @@ class EcuScanActivity : AppCompatActivity() {
         binding.btnStopScan.visibility  = View.GONE
         binding.btnStartScan.visibility = View.VISIBLE
         binding.btnShareLog.isEnabled   = true
+        binding.btnAnalyzeAi.isEnabled  = true
         binding.progressPhase.progress  = 100
 
         // Append summary footer to log
@@ -252,5 +287,26 @@ class EcuScanActivity : AppCompatActivity() {
         }
 
         Toast.makeText(this, "Scan complete! ${state.totalResponded} PIDs responded.", Toast.LENGTH_LONG).show()
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // AI analysis — send the responded PIDs to Claude for interpretation
+    // ═════════════════════════════════════════════════════════════════════════
+
+    private fun analyzeWithAi() {
+        val responded = EcuScanRepository.scanState.value.results
+            .filter { it.status == PidStatus.RESPONDED }
+        if (responded.isEmpty()) {
+            Toast.makeText(this, "Nessun PID con risposta da analizzare.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val sb = StringBuilder("PID con risposta positiva:\n")
+        for (r in responded) {
+            sb.append(r.pidHex).append("  ").append(r.responseHex)
+            r.decodedValue?.let { sb.append(" = ").append(it) }
+            r.label?.let { sb.append("  [").append(it).append("]") }
+            sb.append('\n')
+        }
+        AiAssist.run(this, "Analisi scansione", AiPrompts.scanSystem(), sb.toString())
     }
 }

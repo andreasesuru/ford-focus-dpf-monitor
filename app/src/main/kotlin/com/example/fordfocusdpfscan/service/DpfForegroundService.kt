@@ -8,13 +8,16 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.example.fordfocusdpfscan.ble.BleManager
 import com.example.fordfocusdpfscan.ble.BleManagerHolder
+import com.example.fordfocusdpfscan.ble.RegenStateCapture
 import com.example.fordfocusdpfscan.car.NotificationHelper
 import com.example.fordfocusdpfscan.data.ConnectionState
 import com.example.fordfocusdpfscan.data.DpfData
 import com.example.fordfocusdpfscan.data.DpfRepository
+import com.example.fordfocusdpfscan.data.EcuScanRepository
 import com.example.fordfocusdpfscan.data.MaintenanceRepository
 import com.example.fordfocusdpfscan.data.RegenHistoryRepository
 import com.example.fordfocusdpfscan.data.RegenStatus
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -299,14 +302,25 @@ class DpfForegroundService : LifecycleService() {
     private var lastNotifiedStatus: RegenStatus? = null
     private var lastNotifiedTime = 0L
 
+    // ── Regen ECU-state capture guards ────────────────────────────────────────
+    /** True while a capture sweep is running — prevents overlapping captures. */
+    private var regenCaptureInProgress = false
+    /** True once we've captured the ACTIVE state for the current regen episode.
+     *  Reset to false when the regen ends (INACTIVE) so the next regen re-arms. */
+    private var capturedActiveThisRegen = false
+
     /**
      * Called by DpfRepository on every status transition.
-     * Fires the appropriate heads-up notification + MP3 sound for regen events.
+     * Fires the appropriate heads-up notification + MP3 sound for regen events,
+     * and auto-captures the ECU 05xx state so we can locate the regen-status flag.
      */
     private fun onRegenStatusChanged(old: RegenStatus, new: RegenStatus) {
         Log.d(TAG, "Regen status: $old → $new")
 
-        if (new == RegenStatus.INACTIVE) return   // INACTIVE never notifies
+        if (new == RegenStatus.INACTIVE) {
+            capturedActiveThisRegen = false   // re-arm capture for the next regen
+            return                            // INACTIVE never notifies
+        }
 
         // Skip a repeat of the same event within the debounce window.
         val now = System.currentTimeMillis()
@@ -319,15 +333,47 @@ class DpfForegroundService : LifecycleService() {
 
         when (new) {
             RegenStatus.WARNING   -> NotificationHelper.notifyWarning(this)
-            RegenStatus.ACTIVE    -> NotificationHelper.notifyActive(this)
+            RegenStatus.ACTIVE    -> {
+                NotificationHelper.notifyActive(this)
+                if (!capturedActiveThisRegen) {
+                    capturedActiveThisRegen = true
+                    captureRegenState("REGEN ATTIVA")
+                }
+            }
             RegenStatus.COMPLETED -> {
                 NotificationHelper.notifyCompleted(this)
+                captureRegenState("REGEN COMPLETATA")
                 lifecycleScope.launch {
                     kotlinx.coroutines.delay(8_000)
                     DpfRepository.acknowledgeCompleted()
                 }
             }
             RegenStatus.INACTIVE  -> { /* handled above */ }
+        }
+    }
+
+    /**
+     * Sweeps the ECU 22 05xx range and appends it to the capture log so we can
+     * diff active-regen vs idle and pin down the regen-status PID. Runs off the
+     * main flow and is skipped if a capture (or a manual ECU scan) is already
+     * running — both pause the shared BLE polling loop.
+     */
+    private fun captureRegenState(label: String) {
+        if (regenCaptureInProgress) return
+        if (EcuScanRepository.scanState.value.isRunning) return
+        regenCaptureInProgress = true
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val count = RegenStateCapture(applicationContext, bleManager).captureNow(label)
+                // 0 PIDs means the dongle dropped mid-sweep — don't notify then.
+                if (count > 0) {
+                    NotificationHelper.notifyRegenCaptured(this@DpfForegroundService, count)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Regen capture failed: ${e.message}")
+            } finally {
+                regenCaptureInProgress = false
+            }
         }
     }
 

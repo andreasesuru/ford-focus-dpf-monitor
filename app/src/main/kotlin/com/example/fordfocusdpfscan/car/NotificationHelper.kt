@@ -19,6 +19,7 @@ import com.example.fordfocusdpfscan.R
 import com.example.fordfocusdpfscan.data.DpfData
 import com.example.fordfocusdpfscan.data.RegenStatus
 import com.example.fordfocusdpfscan.data.db.MaintenanceReminder
+import com.example.fordfocusdpfscan.ui.EcuScanActivity
 import com.example.fordfocusdpfscan.ui.MainActivity
 import com.example.fordfocusdpfscan.ui.MaintenanceActivity
 
@@ -49,6 +50,7 @@ object NotificationHelper {
     const val NOTIF_ID_CONNECTION  = 1003
     const val NOTIF_ID_SERVICE     = 1004   // tagliando / service reminder
     const val NOTIF_ID_COOLDOWN    = 1005   // turbo cooldown timer
+    const val NOTIF_ID_CAPTURE     = 1006   // regen ECU-state capture done
     // Maintenance notifications use IDs 2000 + reminder.id (one per reminder)
 
     // ── Channel IDs ───────────────────────────────────────────────────────────
@@ -572,6 +574,46 @@ object NotificationHelper {
 
         try {
             NotificationManagerCompat.from(context).notify(NOTIF_ID_CONNECTION, notification)
+        } catch (e: SecurityException) {
+            Log.e(TAG, "POST_NOTIFICATIONS permission not granted: ${e.message}")
+        }
+    }
+
+    /**
+     * Silent, sticky notification fired after a regen ECU-state capture completes.
+     * Tapping it opens the ECU Scanner screen, where the user can share the log.
+     * No sound/vibration — it's informational and read once the car is stopped.
+     */
+    fun notifyRegenCaptured(context: Context, pidCount: Int) {
+        val tapIntent = PendingIntent.getActivity(
+            context, NOTIF_ID_CAPTURE,
+            Intent(context, EcuScanActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val title = "📸 Stato regen catturato"
+        val text  = "$pidCount parametri ECU salvati. Apri e tocca \"Condividi cattura\"."
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_CONNECTION)
+            .setSmallIcon(R.drawable.ic_car_header)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(
+                "$pidCount parametri ECU registrati durante la rigenerazione. " +
+                "Quando ti fermi, apri lo scanner ECU e tocca \"Condividi cattura regen\" per inviarmi il log."
+            ))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setColor(Color.parseColor("#4CAF50"))
+            .setAutoCancel(true)
+            .setSilent(true)
+            .setContentIntent(tapIntent)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIF_ID_CAPTURE, notification)
         } catch (e: SecurityException) {
             Log.e(TAG, "POST_NOTIFICATIONS permission not granted: ${e.message}")
         }

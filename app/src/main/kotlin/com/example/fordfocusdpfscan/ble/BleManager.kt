@@ -124,13 +124,29 @@ class BleManager(private val context: Context) {
         const val CMD_BARO_PRESSURE   = "0133"
         // 015C: Engine oil temperature in °C. Formula: A-40. Warm: 90–110°C.
         const val CMD_OIL_TEMP        = "015C"
+        // 0142: Control module (battery) voltage. Formula: ((A*256)+B)/1000 V.
+        // Running ~13.8–14.4 V; key-off ~12.6 V. Flags weak battery / alternator.
+        const val CMD_BATTERY_VOLTAGE   = "0142"
+        // 0123: Fuel rail gauge pressure (diesel common rail). ((A*256)+B)*10 kPa.
+        // 0159: Fuel rail absolute pressure — same formula; polled as fallback since
+        //       ECUs expose one or the other. Both map to the same value.
+        const val CMD_FUEL_RAIL_PRESS   = "0123"
+        const val CMD_FUEL_RAIL_PRESS_A = "0159"
+        // 22 0551 CONFIRMED on the EDC17C70 via scan RPM-correlation (standard 0123/0159
+        // return NO DATA on this ECU). 62 05 51 <hi> <lo> → (A*256+B)/10 = bar
+        // (idle ~290 bar, 1600 rpm ~408 bar). Stored as ×10 kPa to match the field.
+        const val CMD_FUEL_RAIL_PRESS_FORD = "220551"
+        // 010F: Intake air temperature. Formula: A-40 °C.
+        const val CMD_INTAKE_AIR_TEMP   = "010F"
 
         val ALL_PIDS = listOf(
             CMD_COOLANT_TEMP, CMD_EGT, CMD_DPF_PRESSURE,
             CMD_DPF_LOAD, CMD_DPF_SOOT, CMD_ODOMETER,
             CMD_LAST_REGEN_DIST, CMD_OIL_CHANGE,
             CMD_RPM, CMD_SPEED, CMD_ENGINE_LOAD,
-            CMD_INTAKE_MAP, CMD_BARO_PRESSURE, CMD_OIL_TEMP
+            CMD_INTAKE_MAP, CMD_BARO_PRESSURE, CMD_OIL_TEMP,
+            CMD_BATTERY_VOLTAGE, CMD_FUEL_RAIL_PRESS_FORD,
+            CMD_INTAKE_AIR_TEMP
         )
 
         // ── Timing ────────────────────────────────────────────────────────────
@@ -452,6 +468,10 @@ class BleManager(private val context: Context) {
      * Polling MUST be paused before calling this.
      */
     suspend fun sendRawCommand(command: String, timeoutMs: Long): String? {
+        // Drain any stale/late reply left in the CONFLATED channel by a previous
+        // command, so we read THIS command's fresh response and not the prior one.
+        // (Without this the ECU scanner logged every reply shifted by one PID.)
+        while (responseChannel.tryReceive().isSuccess) { /* discard stale */ }
         if (!sendElmCommand(command)) return null
         val raw = withTimeoutOrNull(timeoutMs) { responseChannel.receive() }
         return raw?.let { cleanElmResponse(it) }
@@ -798,12 +818,36 @@ class BleManager(private val context: Context) {
                 val v = (b(2) - 40).toFloat()
                 if (v in -20f..150f) DpfRepository.updateOilTemp(v)
             }
-            CMD_DPF_PRESSURE -> if (checkMode01(0x7A) && bytes.size >= 5) {
-                // 41 7A <support> <deltaHi> <deltaLo>
-                // Formula: signed16 / 100 = kPa. Plausible: 0..50 kPa.
-                val rawSigned = (b(3) shl 8) or b(4)
-                val signed16  = if (rawSigned > 0x7FFF) rawSigned - 0x10000 else rawSigned
-                val kPa       = signed16 / 100f
+            CMD_BATTERY_VOLTAGE -> if (checkMode01(0x42) && bytes.size >= 4) {
+                // 41 42 <A> <B> — (A*256+B)/1000 = Volts. Plausible: 6..16 V.
+                val v = ((b(2) shl 8) or b(3)) / 1000f
+                if (v in 6f..16f) DpfRepository.updateBatteryVoltage(v)
+            }
+            CMD_FUEL_RAIL_PRESS, CMD_FUEL_RAIL_PRESS_A -> {
+                // 41 23/59 <A> <B> — (A*256+B)*10 = kPa (diesel common rail).
+                val pid = if (cmd == CMD_FUEL_RAIL_PRESS) 0x23 else 0x59
+                if (checkMode01(pid) && bytes.size >= 4) {
+                    val kPa = ((b(2) shl 8) or b(3)) * 10f
+                    if (kPa in 0f..250_000f) DpfRepository.updateFuelRailPressure(kPa)
+                }
+            }
+            CMD_INTAKE_AIR_TEMP -> if (checkMode01(0x0F) && bytes.size >= 3) {
+                // 41 0F <A> — A - 40 = °C. Plausible: -40..120°C.
+                val t = (b(2) - 40).toFloat()
+                if (t in -40f..120f) DpfRepository.updateIntakeAirTemp(t)
+            }
+            CMD_FUEL_RAIL_PRESS_FORD -> if (checkMode22(0x05, 0x51) && bytes.size >= 5) {
+                // 62 05 51 <hi> <lo> — (A*256+B)/10 = bar → stored as ×10 kPa
+                val kPa = ((b(3) shl 8) or b(4)) * 10f
+                if (kPa in 0f..250_000f) DpfRepository.updateFuelRailPressure(kPa)
+            }
+            CMD_DPF_PRESSURE -> if (checkMode01(0x7A) && bytes.size >= 7) {
+                // 41 7A <support> <B> <C> <D> <E>. On the EDC17C70 the live DPF
+                // backpressure is in bytes D,E (B,C always read 0). (256*D+E)/100 = kPa.
+                // Verified on-car: scales with exhaust flow (idle ~0.2, ~1600 rpm ~3.9 kPa).
+                val raw      = (b(5) shl 8) or b(6)
+                val signed16 = if (raw > 0x7FFF) raw - 0x10000 else raw
+                val kPa      = signed16 / 100f
                 if (kPa >= -5f) DpfRepository.updateDpfDeltaPressure(kPa.coerceAtLeast(0f))
             }
         }

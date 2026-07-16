@@ -60,6 +60,12 @@ class MainActivity : BaseTabActivity() {
     private var devicePickerDialog: AlertDialog? = null
     private val scanStopHandler = Handler(Looper.getMainLooper())
 
+    /** Last connection state applied to the connection card. Used so the card
+     *  (and its accordion) is only touched on a real connect/disconnect
+     *  transition — NOT on every DpfData emission, which would otherwise slam
+     *  the accordion shut ~10×/second the instant the user expands it. */
+    private var lastConnectedState: Boolean? = null
+
     // ── SharedPreferences key for last connected device ───────────────────────
     private val PREFS_NAME = "focus_prefs"
     private val KEY_LAST_ADDRESS = "last_device_address"
@@ -229,6 +235,21 @@ class MainActivity : BaseTabActivity() {
             startActivity(Intent(this, EcuScanActivity::class.java))
         }
 
+        // ── Fault-code reader (DTC) ─────────────────────────────────────────────
+        binding.btnReadDtc.setOnClickListener {
+            startActivity(Intent(this, DtcActivity::class.java))
+        }
+
+        // ── AI Assistant (chat) ───────────────────────────────────────────────
+        binding.btnAiAssistant.setOnClickListener {
+            startActivity(Intent(this, AiChatActivity::class.java))
+        }
+
+        // ── AI Settings ─────────────────────────────────────────────────────────
+        binding.btnAiSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
         // Tab bar highlighting + click listeners are handled centrally by BaseTabActivity.
 
         // Oil change km and last regen km are now read live from ECU —
@@ -349,9 +370,9 @@ class MainActivity : BaseTabActivity() {
             "%,d km".format(data.odometerKm)
         else getString(R.string.value_no_data)
 
-        // ── Km dall'ultima rigenerazione (ECU — PID 22 050B) ──────────────────
+        // ── Km alla prossima rigenerazione (ECU countdown — PID 22 050B) ──────
         binding.tvLastRegen.text = if (data.kmSinceLastRegen >= 0L)
-            "%,d km fa".format(data.kmSinceLastRegen)
+            "tra ~%,d km".format(data.kmSinceLastRegen)
         else getString(R.string.value_no_data)
 
         // ── Km dall'ultimo cambio olio (ECU — PID 22 0542) ────────────────────
@@ -361,12 +382,19 @@ class MainActivity : BaseTabActivity() {
     }
 
     private fun updateConnectionCard(connected: Boolean) {
+        // Only react to an actual connect/disconnect transition. Without this
+        // guard the accordion (layoutConnectionButtons) is force-set on every
+        // DpfData emission, re-collapsing it the moment the user expands it.
+        if (connected == lastConnectedState) return
+        lastConnectedState = connected
+
         if (connected) {
             binding.tvConnectionStatus.text = getString(R.string.status_connected)
             binding.tvConnectionStatus.setTextColor(getColor(R.color.status_ok))
             binding.btnScan.visibility       = View.GONE
             binding.btnDisconnect.visibility = View.VISIBLE
             binding.btnScanEcu.visibility    = View.VISIBLE
+            binding.btnReadDtc.visibility    = View.VISIBLE
             // Auto-collapse accordion: connected = rare to need these buttons
             binding.layoutConnectionButtons.visibility = View.GONE
             binding.tvConnectionChevron.text = "▸"
@@ -376,6 +404,7 @@ class MainActivity : BaseTabActivity() {
             binding.btnScan.visibility       = View.VISIBLE
             binding.btnDisconnect.visibility = View.GONE
             binding.btnScanEcu.visibility    = View.GONE
+            binding.btnReadDtc.visibility    = View.GONE
             // Auto-expand accordion: disconnected = user needs to tap Scan
             binding.layoutConnectionButtons.visibility = View.VISIBLE
             binding.tvConnectionChevron.text = "▾"

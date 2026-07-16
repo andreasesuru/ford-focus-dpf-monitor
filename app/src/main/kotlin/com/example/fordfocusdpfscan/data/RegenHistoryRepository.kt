@@ -126,6 +126,49 @@ class RegenHistoryRepository(context: Context) {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
+    // One-time legacy cleanup
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Re-labels legacy false-positive INTERRUPTED regens recorded before the new
+     * multi-signal detector (cutoff: 11 Jul 2026). Those cycles ended naturally
+     * when driving conditions changed (EGT dropped as the car slowed) — not because
+     * the engine was switched off — so they must not be shown or flagged as problems.
+     * Returns the number of rows updated. Idempotent (only touches INTERRUPTED rows).
+     */
+    suspend fun relabelLegacyInterrupted(): Int {
+        val cutoff = Calendar.getInstance().apply {
+            set(2026, Calendar.JULY, 11, 0, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val n = dao.relabelLegacyInterrupted(cutoff)
+        if (n > 0) Log.d(TAG, "Re-labelled $n legacy interrupted regens → ENDED_NATURAL")
+        return n
+    }
+
+    /** Compact regen-history summary used as context for the AI assistant. */
+    suspend fun aiHistorySummary(): String {
+        val all = dao.getAllSessionsOnce()   // newest first
+        if (all.isEmpty()) return "Nessuna rigenerazione registrata."
+        val done        = all.count { it.result == "COMPLETED" || it.result == "ENDED_NATURAL" }
+        val interrupted = all.count { it.result == "INTERRUPTED" }
+        val avgSoot = all
+            .filter { it.preSootPct >= 0 && it.postSootPct != null }
+            .map { it.preSootPct - it.postSootPct!! }
+            .average().let { if (it.isNaN()) 0.0 else it }
+        val sb = StringBuilder()
+        sb.append("Rigenerazioni totali: ${all.size} (completate/naturali: $done, interrotte: $interrupted).\n")
+        sb.append("Riduzione soot media: ${"%.1f".format(avgSoot)}%.\n")
+        sb.append("Ultime sessioni (recenti prima):\n")
+        all.take(5).forEach { s ->
+            val pre  = if (s.preSootPct >= 0) "${s.preSootPct.toInt()}%" else "?"
+            val post = s.postSootPct?.let { "${it.toInt()}%" } ?: "?"
+            sb.append("- ${s.result}: soot $pre→$post, EGT picco ${s.peakEgtC.toInt()}°C, odo ${s.preOdometerKm} km\n")
+        }
+        return sb.toString().trim()
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
     // HTML Export — mechanic report
     // ═════════════════════════════════════════════════════════════════════════
 
@@ -158,10 +201,11 @@ class RegenHistoryRepository(context: Context) {
             val deltaPre = if (s.preDeltaPKpa >= 0) "${"%.2f".format(s.preDeltaPKpa)} kPa" else "—"
             val deltaPeak= if (s.peakDeltaPKpa > 0) "${"%.2f".format(s.peakDeltaPKpa)} kPa" else "—"
             val resultBadge = when (s.result) {
-                "COMPLETED"   -> "<span class=\"ok\">✓ Completata</span>"
-                "INTERRUPTED" -> "<span class=\"warn\">⚠ Interrotta</span>"
-                "IN_PROGRESS" -> "<span class=\"info\">⟳ In corso</span>"
-                else          -> s.result
+                "COMPLETED"     -> "<span class=\"ok\">✓ Completata</span>"
+                "ENDED_NATURAL" -> "<span class=\"ok\">✓ Terminata (naturale)</span>"
+                "INTERRUPTED"   -> "<span class=\"warn\">⚠ Interrotta</span>"
+                "IN_PROGRESS"   -> "<span class=\"info\">⟳ In corso</span>"
+                else            -> s.result
             }
             val rowClass = if (s.result == "INTERRUPTED") " class=\"interrupted-row\"" else ""
 

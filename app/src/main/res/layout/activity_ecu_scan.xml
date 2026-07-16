@@ -172,6 +172,31 @@
 
     </ScrollView>
 
+    <!-- Analyze scan with AI — enabled when the scan completes -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAnalyzeAi"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="12dp"
+        android:layout_marginTop="8dp"
+        android:text="🤖  Analizza scansione con AI"
+        android:textSize="13sp"
+        android:enabled="false"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        app:strokeColor="@color/dpf_orange" />
+
+    <!-- Share the auto-captured regen ECU-state log (filled during a regen) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnShareCapture"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="12dp"
+        android:layout_marginTop="8dp"
+        android:text="📸  Condividi cattura regen"
+        android:textSize="13sp"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        app:strokeColor="@color/status_ok" />
+
     <!-- ── Bottom action bar ────────────────────────────────────────────────── -->
     <LinearLayout
         android:layout_width="match_parent"

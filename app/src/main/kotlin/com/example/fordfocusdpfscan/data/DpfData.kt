@@ -52,9 +52,10 @@ data class DpfData(
     val regenStrategy: RegenStrategy = RegenStrategy.NONE,
 
     // ── Distance counters (live from ECU) ─────────────────────────────────────
-    /** Km travelled since the last DPF regeneration.
-     *  Derived from PID 22 050B. Confirmed on Ford Focus Mk3 1.5 TDCi EDC17C70.
-     *  Example: 411 km after last regen. -1L = no data yet. */
+    /** ECU regen-distance value from PID 22 050B. On the EDC17C70 this behaves as a
+     *  live COUNTDOWN to the NEXT regeneration (it falls as you drive and resets up
+     *  after a regen) — not "km since last". The ECU re-estimates it continuously from
+     *  the soot model, so it drifts. Field name kept for compatibility. -1L = no data. */
     val kmSinceLastRegen: Long = -1L,
 
     /** Km travelled since the last engine oil change.
@@ -92,6 +93,17 @@ data class DpfData(
     /** EGT post-DPF sensor (downstream) in °C. Extracted from PID 01 78 sensor 2.
      *  Delta vs pre-DPF indicates DPF efficiency. -1f = no data or sensor absent. */
     val egtPostDpfC: Float = -1f,
+
+    /** Control module / battery voltage in V. PID 01 42.
+     *  Running ~13.8–14.4 V; key-off ~12.6 V. -1f = no data. */
+    val batteryVoltage: Float = -1f,
+
+    /** Fuel rail pressure in kPa (diesel common rail). PID 01 23 / 01 59.
+     *  Idle ~25 000–35 000 kPa (250–350 bar). -1f = no data. */
+    val fuelRailPressureKpa: Float = -1f,
+
+    /** Intake air temperature in °C. PID 01 0F. -1f = no data. */
+    val intakeAirTempC: Float = -1f,
 
     // ── BLE connection ────────────────────────────────────────────────────────
     /** True when the GATT connection to Android-Vlink is active and services

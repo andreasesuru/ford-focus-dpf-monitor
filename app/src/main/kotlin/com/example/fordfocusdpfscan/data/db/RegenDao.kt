@@ -33,6 +33,18 @@ interface RegenDao {
     @Query("SELECT COUNT(*) FROM regen_sessions")
     suspend fun getTotalCount(): Int
 
+    /**
+     * Re-labels legacy false-positive INTERRUPTED regens recorded before [cutoff]
+     * by the old detector. Those cycles ended naturally (conditions changed / EGT
+     * dropped), not because the driver switched the engine off. Returns rows updated.
+     */
+    @Query("""
+        UPDATE regen_sessions
+        SET result = 'ENDED_NATURAL'
+        WHERE result = 'INTERRUPTED' AND startTimestamp < :cutoff
+    """)
+    suspend fun relabelLegacyInterrupted(cutoff: Long): Int
+
     @Query("DELETE FROM regen_sessions")
     suspend fun clearAll()
 

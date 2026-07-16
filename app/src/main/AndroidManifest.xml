@@ -29,6 +29,9 @@
     <!-- API 33+ — required to post notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Internet — used only by the optional Claude AI features (Settings) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- BLE hardware feature — the app requires BLE to function -->
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
@@ -81,6 +84,33 @@
             android:name=".ui.EcuScanActivity"
             android:exported="false"
             android:label="ECU Scanner"
+            android:parentActivityName=".ui.MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             DTC — fault-code reader (check-engine light)
+        ───────────────────────────────────────────────────────────────────── -->
+        <activity
+            android:name=".ui.DtcActivity"
+            android:exported="false"
+            android:label="Codici Errore"
+            android:parentActivityName=".ui.MainActivity" />
+
+        <!-- ─────────────────────────────────────────────────────────────────
+             SETTINGS — Claude AI features (API key + cost monitor)
+        ───────────────────────────────────────────────────────────────────── -->
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:exported="false"
+            android:label="Impostazioni AI"
+            android:parentActivityName=".ui.MainActivity"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Diagnostic AI assistant (chat) -->
+        <activity
+            android:name=".ui.AiChatActivity"
+            android:exported="false"
+            android:label="Assistente AI"
             android:parentActivityName=".ui.MainActivity"
             android:windowSoftInputMode="adjustResize" />
 
