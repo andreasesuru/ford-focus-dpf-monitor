@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- DtcActivity layout — read/clear engine fault codes (check-engine light). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="8dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔧  Codici Errore"
+            android:textColor="@color/text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Legge i codici della centralina motore (spia motore)"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:layout_marginTop="2dp"/>
+    </LinearLayout>
+
+    <!-- Read button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnReadDtc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="4dp"
+        android:text="Leggi codici"
+        app:backgroundTint="@color/dpf_blue_light"/>
+
+    <!-- Explain with AI — shown only when codes are present -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnExplainAi"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:text="🤖  Spiega con AI"
+        android:textSize="13sp"
+        android:visibility="gone"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        app:strokeColor="@color/dpf_orange"/>
+
+    <!-- Status line -->
+    <TextView
+        android:id="@+id/tvDtcStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Premi «Leggi codici» per interrogare la centralina."
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp"
+        android:gravity="center"
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="12dp"/>
+
+    <!-- Results -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:id="@+id/containerDtc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="16dp"/>
+
+    </ScrollView>
+
+    <!-- Clear button (hidden until codes are found) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnClearDtc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="12dp"
+        android:text="🗑  Cancella codici"
+        android:visibility="gone"
+        app:backgroundTint="@color/status_danger"/>
+
+</LinearLayout>

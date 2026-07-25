@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/versione-4.19-blue"/>
+  <img src="https://img.shields.io/badge/versione-4.20-blue"/>
   <img src="https://img.shields.io/badge/Android-8.0%2B-green"/>
   <img src="https://img.shields.io/badge/Kotlin-2.x-purple"/>
   <img src="https://img.shields.io/badge/Android%20Auto-✓-orange"/>

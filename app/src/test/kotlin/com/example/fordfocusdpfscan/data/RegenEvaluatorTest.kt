@@ -98,12 +98,25 @@ class RegenEvaluatorTest {
         assertEquals(RegenStatus.INACTIVE, r.status)
     }
 
-    // ── ACTIVE via exotherm across the filter ─────────────────────────────────
+    // ── Removed EXOTHERM signal: outlet≫inlet is a sensor offset, not a regen ──
 
-    @Test fun exothermAcrossFilter_confirmsActive() {
-        val r = ev.evaluate(sample(egtPre = 350f, egtPost = 480f, coolant = 90f), RegenStatus.INACTIVE)
-        assertEquals(RegenStatus.ACTIVE, r.status)
-        assertEquals(RegenStrategy.EXOTHERM, r.strategy)
+    @Test fun hotOutletModerateInlet_noLongerFalseTriggersActive() {
+        // egtPost 480 ≫ egtPre 350 used to fire ACTIVE via EXOTHERM. On this car the
+        // two 01 78 sensors aren't a real pre/post pair (sensor 2 always ~80°C hotter),
+        // so with a moderate inlet and no soot drop this must NOT be read as a regen.
+        val r = ev.evaluate(sample(egtPre = 350f, egtPost = 480f, soot = 30f, coolant = 90f), RegenStatus.INACTIVE)
+        assertEquals(RegenStatus.INACTIVE, r.status)
+    }
+
+    @Test fun sootDrop_takesPriorityAsStrategy() {
+        // Both signals true at once: EGT sustained ≥550°C (≥7 samples) AND soot falling.
+        // SOOT_DROP is authoritative, so it must win the strategy label.
+        var last = ev.evaluate(sample(600f, soot = 40f, coolant = 90f, t = 0L), RegenStatus.INACTIVE)
+        for (i in 1..7) {
+            last = ev.evaluate(sample(600f, soot = 40f - i, coolant = 90f, t = i * 15_000L), last.status)
+        }
+        assertEquals(RegenStatus.ACTIVE, last.status)
+        assertEquals(RegenStrategy.SOOT_DROP, last.strategy)
     }
 
     // ── COMPLETED (cool-down) ─────────────────────────────────────────────────

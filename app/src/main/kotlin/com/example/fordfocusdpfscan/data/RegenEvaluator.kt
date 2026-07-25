@@ -5,16 +5,21 @@ package com.example.fordfocusdpfscan.data
 //
 // Pure (no Android deps) → fully unit-testable (see RegenEvaluatorTest).
 //
-// A regeneration is declared ACTIVE when ANY of three independent signals fires;
-// this catches regens the old EGT-only logic missed (e.g. a regen running with a
-// only moderate inlet EGT, visible only as soot slowly falling):
+// A regeneration is declared ACTIVE from two independent signals. SOOT_DROP is the
+// authoritative one — diesel soot only ever falls during a regen, so a sustained
+// drop is direct proof a cycle is in progress. EGT_TEMP is a secondary confirmation
+// and is vetoed when soot is rising (hot exhaust with accumulating soot is just hard
+// driving, not a burn):
 //
-//   1. EGT_TEMP  — inlet EGT ≥ 550 °C sustained (classic post-injection regen).
-//   2. SOOT_DROP — soot % falling steadily while the engine is warm. Diesel soot
-//                  only decreases during regeneration, so a sustained drop is a
-//                  direct proof that a cycle is in progress.
-//   3. EXOTHERM  — outlet EGT much hotter than inlet (soot burning inside the
-//                  filter generates heat), even when the inlet reads moderate.
+//   1. SOOT_DROP — soot % falling steadily while the engine is warm (authoritative).
+//   2. EGT_TEMP  — inlet EGT ≥ 550 °C sustained, UNLESS soot is rising.
+//
+// REMOVED (v4.20): the old EXOTHERM signal (outlet EGT ≫ inlet). On this car the two
+// PID 01 78 EGT sensors are NOT a clean pre/post-DPF pair — sensor 2 simply reads
+// ~80 °C hotter at all times — so "outlet ≫ inlet" is a fixed sensor offset, not
+// combustion heat. It fired ACTIVE on ordinary warm driving: verified against 65
+// on-car captures in which soot climbed 18 %→75 % straight through 15 such "regens"
+// without ever falling. It produced almost every false positive, so it was dropped.
 //
 // Hysteresis on the WARNING band (enter 450 °C, leave only below 420 °C) stops the
 // status from flapping when the EGT hovers around 450 °C during normal hot driving
@@ -49,10 +54,6 @@ class RegenEvaluator {
         // ── "Engine warm" gate for soot-drop (avoids cold-start model noise) ─────
         const val WARM_COOLANT_C = 60f
         const val WARM_EGT_C     = 200f
-
-        // ── Exotherm across the filter (outlet − inlet) ──────────────────────────
-        const val EXOTHERM_MIN_DELTA_C = 100f
-        const val EXOTHERM_MIN_POST_C  = 450f
     }
 
     /** Running count of consecutive samples above [EGT_ACTIVE_THRESHOLD]. */
@@ -87,14 +88,11 @@ class RegenEvaluator {
         }
         val egtHigh = egtHot && !sootRising
 
-        val exotherm = sample.egtPost >= 0f && sample.egtPre >= 0f &&
-            sample.egtPost >= EXOTHERM_MIN_POST_C &&
-            (sample.egtPost - sample.egtPre) >= EXOTHERM_MIN_DELTA_C
-
+        // SOOT_DROP is authoritative (soot only falls during a regen); EGT_TEMP is a
+        // secondary confirmation. The old EXOTHERM trigger was removed — see header.
         val trigger = when {
-            egtHigh  -> RegenStrategy.EGT_TEMP
             sootDrop -> RegenStrategy.SOOT_DROP
-            exotherm -> RegenStrategy.EXOTHERM
+            egtHigh  -> RegenStrategy.EGT_TEMP
             else     -> null
         }
         if (trigger != null) return RegenResult(RegenStatus.ACTIVE, trigger)

@@ -8,6 +8,7 @@ import android.view.animation.DecelerateInterpolator
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GestureDetectorCompat
+import com.example.fordfocusdpfscan.BuildConfig
 import com.example.fordfocusdpfscan.R
 import kotlin.math.abs
 
@@ -59,6 +60,11 @@ abstract class BaseTabActivity : AppCompatActivity() {
         highlightActiveTab()
         setupTabClickListeners()
         animateBodyEntrance()
+
+        // Keep the footer version label in sync with build.gradle on EVERY tab
+        // (not just Monitor). The layout's hardcoded default would otherwise show
+        // a stale version on Diagnostica / Storico / Manutenzione.
+        findViewById<TextView>(R.id.tvFooterVersion)?.text = "v${BuildConfig.VERSION_NAME}"
     }
 
     // ═════════════════════════════════════════════════════════════════════════
